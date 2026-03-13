@@ -147,6 +147,7 @@ dependencies = [
     { name = "datasets" },
     { name = "numpy" },
     { name = "pandas" },
+    { name = "pypickle" },
 ]
 
 [package.metadata]
@@ -154,6 +155,7 @@ requires-dist = [
     { name = "datasets", specifier = ">=4.7.0" },
     { name = "numpy", specifier = ">=2.4.3" },
     { name = "pandas", specifier = ">=3.0.1" },
+    { name = "pypickle", specifier = ">=2.0.1" },
 ]
 
 [[package]]
@@ -889,6 +891,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/b0/77/a5b8c569bf593b0140bde72ea885a803b82086995367bf2037de0159d924/pygments-2.19.2.tar.gz", hash = "sha256:636cb2477cec7f8952536970bc533bc43743542f70392ae026374600add5b887", size = 4968631, upload-time = "2025-06-21T13:39:12.283Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c7/21/705964c7812476f378728bdf590ca4b771ec72385c533964653c68e86bdc/pygments-2.19.2-py3-none-any.whl", hash = "sha256:86540386c03d588bb81d44bc3928634ff26449851e99741617ecb9037ee5ec0b", size = 1225217, upload-time = "2025-06-21T13:39:07.939Z" },
+]
+
+[[package]]
+name = "pypickle"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/f2/214b962b5edf37ce86929e073ab4db953e4c495bcb58da511b4e49923159/pypickle-2.0.1.tar.gz", hash = "sha256:0cc1ee65293e4dfa90f0db6435e8021c6a83346be98d0fee81aceb2dad1fb091", size = 16901, upload-time = "2025-05-19T20:45:42.582Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/44/7fa273d9bb6f4b67db104eb90c4ca66eb40cb692c5028c836f500d06364e/pypickle-2.0.1-py3-none-any.whl", hash = "sha256:894afd81d26443e8589d21361a3cc04bd9f5c1535aaa627c3bee1212b58bdf74", size = 13615, upload-time = "2025-05-19T20:45:41.138Z" },
 ]
 
 [[package]]
