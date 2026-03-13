@@ -898,6 +898,7 @@ def loadCSV(csv_path, name, df=None):
 df1 = loadCSV("MLNTeam-Unical/OpenTuringBench", name="in_domain")
 df = loadCSV("artem9k/ai-text-detection-pile", name="", df=df1)
 
+
 module_path = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
 
 dataset_path_train = module_path / "data" / "dataset-hf_train.csv"
@@ -912,7 +913,10 @@ mapping_classes = {
 }
 
 df["Label"] = df["Label"].apply(lambda x: mapping_classes.get(x.split("/")[0].lower(), "Others"))
-df = df.sample(20000, random_state=42)
+
+df = df[df["Label"] != "Others"]
+
+df = df.head(50000).sample(10000, random_state=42)
 df[["Text","Label"]].to_csv(dataset_path_train, index=False)
 
 print(df)
@@ -924,8 +928,16 @@ train_model(
 )
 
 
+# import gzip
+# with gzip.open(path, "wb", compresslevel=9) as file:
+#             pickle.dump(self, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+#  with gzip.open(path, "rb") as file:
+#                 return pickle.load(file)
+
+
 dataset_path_test = module_path / "data" / "dataset-hf_test.csv"
-df = df.sample(1000, random_state=42)
+df = df.tail(5000).sample(100, random_state=42)
 df[["Text","Label"]].to_csv(dataset_path_test, index=False)
 
 df = evaluate_csv(
@@ -933,4 +945,9 @@ df = evaluate_csv(
    dataset_path_test
 )
 
+dataset_path_test_prof = module_path / "data" / "dataset-exemplos.csv"
+df = evaluate_csv(
+    f"{module_path}/models/model.pkl",
+   dataset_path_test_prof
+)
 
