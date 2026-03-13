@@ -15,10 +15,10 @@ class DenseLayer(Layer):
             self.weights = None
         else:
             fan_in = self.input_shape()[0]
-            self.weights = np.random.randn(fan_in, self.n_units) * np.sqrt(2.0 / fan_in)
+            self.weights = (np.random.randn(fan_in, self.n_units) * np.sqrt(2.0 / fan_in)).astype(np.float32)
 
         # initialize biases to 0
-        self.biases = np.zeros((1, self.n_units))
+        self.biases = np.zeros((1, self.n_units), dtype=np.float32)
         return self
 
     def forward_propagation(self, input_data):
