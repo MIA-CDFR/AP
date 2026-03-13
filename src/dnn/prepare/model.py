@@ -15,10 +15,10 @@ from dnn.layers.activation import ReLU, Softmax, Dropout
 class Model:
     def __init__(self, n_classes: int = 6):
         self.nn = NeuralNetwork()
-        self.nn.add_layer(DenseLayer(512))
+        self.nn.add_layer(DenseLayer(256))
         self.nn.add_layer(ReLU())
         self.nn.add_layer(Dropout(0.3))
-        self.nn.add_layer(DenseLayer(512))
+        self.nn.add_layer(DenseLayer(128))
         self.nn.add_layer(ReLU())
         self.nn.add_layer(Dropout(0.2))
         self.nn.add_layer(DenseLayer(n_classes))
