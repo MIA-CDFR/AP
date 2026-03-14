@@ -48,9 +48,9 @@ def load_data():
     df = dataset["train"].to_pandas()
     df["Text"] = df["text"]
     df = df[df["source"] == "human"]
-    df["Label"] = df["source"].apply(lambda x: "Human" if x == "human" else "")
+    df["Label"] = df["source"].apply(lambda x: "Human" if x == "human" else "Others")
     #n_lines = min(n_lines, len(df))
-
+    print(f"Loaded {len(df)} human samples from ai-text-detection-pile")
 
     datasetA = load_dataset("Anthropic/persuasion")
     dfA = datasetA["train"].to_pandas()
@@ -84,19 +84,27 @@ def load_data():
     df_train = df_train[df_train["Label"] != "Others"]
     df_test = df_test[df_test["Label"] != "Others"]
 
+
+    print(f"Number of Human samples in training set: {df_train[df_train["Label"] == "Human"].shape[0]}")
+    print(f"Number of Human samples in test set: {df_test[df_test["Label"] == "Human"].shape[0]}")
+
+
+
     df_tr_Meta =  df_train[df_train["Label"] == "Meta"].sample(1000, random_state=42)
     df_tr_OpenAI =  df_train[df_train["Label"] == "OpenAI"].sample(1000, random_state=42)
     df_tr_Mistral =  df_train[df_train["Label"] == "Mistral"].sample(1000, random_state=42)
     df_tr_Google =  df_train[df_train["Label"] == "Google"].sample(1000, random_state=42)
     df_tr_Anthropic =  df_train[df_train["Label"] == "Anthropic"].sample(1000, random_state=42)
-    df_train = pd.concat([df_tr_Meta, df_tr_OpenAI, df_tr_Mistral, df_tr_Google, df_tr_Anthropic], ignore_index=True)
+    df_tr_Human =  df_train[df_train["Label"] == "Human"].sample(1000, random_state=42)
+    df_train = pd.concat([df_tr_Meta, df_tr_OpenAI, df_tr_Mistral, df_tr_Google, df_tr_Anthropic, df_tr_Human], ignore_index=True)
 
     df_te_Meta =  df_test[df_test["Label"] == "Meta"].sample(1000, random_state=42)
     df_te_OpenAI =  df_test[df_test["Label"] == "OpenAI"].sample(1000, random_state=42)
     df_te_Mistral =  df_test[df_test["Label"] == "Mistral"].sample(1000, random_state=42)
     df_te_Google =  df_test[df_test["Label"] == "Google"].sample(1000, random_state=42)
     df_te_Anthropic =  df_test[df_test["Label"] == "Anthropic"].sample(1000, random_state=42)
-    df_test = pd.concat([df_te_Meta, df_te_OpenAI, df_te_Mistral, df_te_Google, df_te_Anthropic], ignore_index=True)
+    df_te_Human =  df_test[df_test["Label"] == "Human"].sample(1000, random_state=42)
+    df_test = pd.concat([df_te_Meta, df_te_OpenAI, df_te_Mistral, df_te_Google, df_te_Anthropic, df_te_Human], ignore_index=True)
     
 
     print(df_train["Label"].describe())
@@ -105,6 +113,10 @@ def load_data():
 
 
     return df_train,df_test
+
+
+
+
 
 
 ############################################
@@ -207,7 +219,15 @@ class DNNClassifier(nn.Module):
 
         return self.net(x)
 
+class LinearClassifier(nn.Module):
 
+    def __init__(self,input_dim,n_classes):
+        super().__init__()
+        self.fc = nn.Linear(input_dim,n_classes)
+
+    def forward(self,x):
+        return self.fc(x)
+    
 ############################################
 # EMBEDDING + LSTM
 ############################################
@@ -435,7 +455,10 @@ def main():
     # MODEL CHOICE
     ############################################
 
-    model = GRUClassifier(X_train.shape[1],n_classes=n_classes).to(device)
+    #model = GRUClassifier(X_train.shape[1],n_classes=n_classes).to(device)
+    #model = LinearClassifier(X_train.shape[1],n_classes=n_classes).to(device)
+    model = DNNClassifier(X_train.shape[1],n_classes=n_classes).to(device)
+    #model = LSTMClassifier(X_train.shape[1],n_classes=n_classes).to
 
     model = train_model(model,train_loader,test_loader,device)
 
@@ -444,7 +467,8 @@ def main():
     Path("./models").mkdir(parents=True, exist_ok=True)
 
     torch.save({
-        "model_type": "gru",
+        #"model_type": "gru",
+        "model_type": "dnn",
         "model_state": model.state_dict(),
         "label_map": label_map,
         "vectorizer": vectorizer

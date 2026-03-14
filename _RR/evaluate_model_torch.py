@@ -28,6 +28,60 @@ class GRUClassifier(nn.Module):
 
         return self.fc(h[-1])
 
+class LinearClassifier(nn.Module):
+
+    def __init__(self,input_dim,n_classes):
+        super().__init__()
+        self.fc = nn.Linear(input_dim,n_classes)
+
+    def forward(self,x):
+        return self.fc(x)
+
+class DNNClassifier(nn.Module):
+
+    def __init__(self,input_dim,n_classes):
+
+        super().__init__()
+
+        self.net = nn.Sequential(
+
+            nn.Linear(input_dim,256),
+            nn.ReLU(),
+            nn.Dropout(0.3),
+
+            nn.Linear(256,128),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+
+            nn.Linear(128,n_classes)
+
+        )
+
+    def forward(self,x):
+
+        return self.net(x)
+    
+class LSTMClassifier(nn.Module):
+
+    def __init__(self,input_dim,embed_dim=128,hidden_dim=128,n_classes=6):
+
+        super().__init__()
+
+        self.embedding = nn.Linear(input_dim,embed_dim)
+
+        self.lstm = nn.LSTM(embed_dim,hidden_dim,batch_first=True)
+
+        self.fc = nn.Linear(hidden_dim,n_classes)
+
+    def forward(self,x):
+
+        x = self.embedding(x)
+
+        x = x.unsqueeze(1)
+
+        output,(h,c) = self.lstm(x)
+
+        return self.fc(h[-1])
 ############################################
 # TEXT PREPROCESSING (igual ao treino)
 ############################################
@@ -101,7 +155,8 @@ def load_model(model_path):
     input_dim = len(vectorizer.get_feature_names_out())
     n_classes = len(label_map)
 
-    model = GRUClassifier(input_dim, n_classes=n_classes)
+    #model = GRUClassifier(input_dim, n_classes=n_classes)
+    model = LinearClassifier(input_dim, n_classes=n_classes)
 
     model.load_state_dict(checkpoint["model_state"])
 
