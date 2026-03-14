@@ -11,7 +11,7 @@ from datasets import load_dataset
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from pathlib import Path
-
+from pathlib import Path
 
 ############################################
 # TEXT PREPROCESSING
@@ -35,36 +35,62 @@ def preprocess_text(text):
 
 def load_data():
 
-    dataset = load_dataset("MLNTeam-Unical/OpenTuringBench",name="in_domain")
-    df_train = dataset["train"].to_pandas()
-    df_train = df_train.sample(40000, random_state=42)
-    df_test = dataset["test"].to_pandas()
-    df_test = df_test.sample(10000, random_state=42)
-    df_train.rename(columns={"content":"Text","model":"Label"},inplace=True)
-    df_test.rename(columns={"content":"Text","model":"Label"},inplace=True)
+    ############################################
+    # OPENTURINGBENCH
+    ############################################
 
+    dataset = load_dataset("MLNTeam-Unical/OpenTuringBench", name="in_domain")
 
-    dataset = load_dataset("artem9k/ai-text-detection-pile")
-    df = dataset["train"].to_pandas()
-    df["Text"] = df["text"]
-    df = df[df["source"] == "human"]
-    df["Label"] = df["source"].apply(lambda x: "Human" if x == "human" else "Others")
-    #n_lines = min(n_lines, len(df))
-    print(f"Loaded {len(df)} human samples from ai-text-detection-pile")
+    df_train = dataset["train"].to_pandas().sample(40000, random_state=42)
+    df_test = dataset["test"].to_pandas().sample(10000, random_state=42)
+
+    df_train.rename(columns={"content": "Text", "model": "Label"}, inplace=True)
+    df_test.rename(columns={"content": "Text", "model": "Label"}, inplace=True)
+
+    ############################################
+    # HUMAN DATASET
+    ############################################
+
+    dataset_h = load_dataset("artem9k/ai-text-detection-pile")
+
+    df_h = dataset_h["train"].to_pandas()
+
+    df_h = df_h[df_h["source"] == "human"]
+    df_h["Text"] = df_h["text"]
+    df_h["Label"] = "Human"
+
+    # limitar dataset para não carregar 1M exemplos
+    df_h = df_h.sample(10000, random_state=42)
+
+    df_h_train = df_h.sample(frac=0.8, random_state=42)
+    df_h_test = df_h.drop(df_h_train.index)
+
+    ############################################
+    # ANTHROPIC DATASET
+    ############################################
 
     datasetA = load_dataset("Anthropic/persuasion")
+
     dfA = datasetA["train"].to_pandas()
-    dfA["id"] = dfA["worker_id"]
+
     dfA["Text"] = dfA["argument"]
-    dfA["Label"] = dfA["source"].apply(lambda x: "Anthropic" if x.startswith("Claude") else "Human")
+    dfA["Label"] = dfA["source"].apply(
+        lambda x: "Anthropic" if str(x).startswith("Claude") else "Human"
+    )
 
+    dfA_train = dfA.sample(frac=0.8, random_state=42)
+    dfA_test = dfA.drop(dfA_train.index)
 
-    df_train = pd.concat([df_train, df, dfA], ignore_index=True)
-    df_test = pd.concat([df_test, df, dfA], ignore_index=True)
+    ############################################
+    # MERGE DATASETS
+    ############################################
 
-    # print(df_train["Label"])
-    # print(df_test["Label"])
-    #    return df[["id", "Text", "Label"]].sample(n_lines, random_state=42).reset_index(drop=True)
+    df_train = pd.concat([df_train, df_h_train, dfA_train], ignore_index=True)
+    df_test = pd.concat([df_test, df_h_test, dfA_test], ignore_index=True)
+
+    ############################################
+    # NORMALIZE LABELS
+    ############################################
 
     mapping_classes = {
         "meta-llama": "Meta",
@@ -72,48 +98,60 @@ def load_data():
         "mistralai": "Mistral",
         "google": "Google",
         "anthropic": "Anthropic",
-        "Human": "Human",
+        "human": "Human",
     }
 
+    def normalize_label(label):
 
+        key = str(label).split("/")[0].lower()
+        return mapping_classes.get(key, label)
 
+    df_train["Label"] = df_train["Label"].apply(normalize_label)
+    df_test["Label"] = df_test["Label"].apply(normalize_label)
 
-    df_train["Label"] = df_train["Label"].apply(lambda x: mapping_classes.get(x.split("/")[0].lower(), "Others"))
-    df_test["Label"] = df_test["Label"].apply(lambda x: mapping_classes.get(x.split("/")[0].lower(), "Others"))
-    
-    df_train = df_train[df_train["Label"] != "Others"]
-    df_test = df_test[df_test["Label"] != "Others"]
+    ############################################
+    # KEEP ONLY TARGET CLASSES
+    ############################################
 
+    allowed = ["Meta", "OpenAI", "Mistral", "Google", "Anthropic", "Human"]
 
-    print(f"Number of Human samples in training set: {df_train[df_train["Label"] == "Human"].shape[0]}")
-    print(f"Number of Human samples in test set: {df_test[df_test["Label"] == "Human"].shape[0]}")
+    df_train = df_train[df_train["Label"].isin(allowed)]
+    df_test = df_test[df_test["Label"].isin(allowed)]
 
+    ############################################
+    # BALANCE DATASET
+    ############################################
 
+    def balanced_sample(df, n=1000):
 
-    df_tr_Meta =  df_train[df_train["Label"] == "Meta"].sample(1000, random_state=42)
-    df_tr_OpenAI =  df_train[df_train["Label"] == "OpenAI"].sample(1000, random_state=42)
-    df_tr_Mistral =  df_train[df_train["Label"] == "Mistral"].sample(1000, random_state=42)
-    df_tr_Google =  df_train[df_train["Label"] == "Google"].sample(1000, random_state=42)
-    df_tr_Anthropic =  df_train[df_train["Label"] == "Anthropic"].sample(1000, random_state=42)
-    df_tr_Human =  df_train[df_train["Label"] == "Human"].sample(1000, random_state=42)
-    df_train = pd.concat([df_tr_Meta, df_tr_OpenAI, df_tr_Mistral, df_tr_Google, df_tr_Anthropic, df_tr_Human], ignore_index=True)
+        dfs = []
 
-    df_te_Meta =  df_test[df_test["Label"] == "Meta"].sample(1000, random_state=42)
-    df_te_OpenAI =  df_test[df_test["Label"] == "OpenAI"].sample(1000, random_state=42)
-    df_te_Mistral =  df_test[df_test["Label"] == "Mistral"].sample(1000, random_state=42)
-    df_te_Google =  df_test[df_test["Label"] == "Google"].sample(1000, random_state=42)
-    df_te_Anthropic =  df_test[df_test["Label"] == "Anthropic"].sample(1000, random_state=42)
-    df_te_Human =  df_test[df_test["Label"] == "Human"].sample(1000, random_state=42)
-    df_test = pd.concat([df_te_Meta, df_te_OpenAI, df_te_Mistral, df_te_Google, df_te_Anthropic, df_te_Human], ignore_index=True)
-    
+        for label in allowed:
 
-    print(df_train["Label"].describe())
-    print(df_test["Label"].describe())
+            subset = df[df["Label"] == label]
 
+            if len(subset) >= n:
+                dfs.append(subset.sample(n, random_state=42))
+            else:
+                print(f"Warning: only {len(subset)} samples for {label}")
+                dfs.append(subset)
 
+        return pd.concat(dfs, ignore_index=True)
 
-    return df_train,df_test
+    df_train = balanced_sample(df_train, 1000)
+    df_test = balanced_sample(df_test, 1000)
 
+    ############################################
+    # INFO
+    ############################################
+
+    print("\nTrain distribution:")
+    print(df_train["Label"].value_counts())
+
+    print("\nTest distribution:")
+    print(df_test["Label"].value_counts())
+
+    return df_train, df_test
 
 
 
@@ -457,22 +495,25 @@ def main():
 
     #model = GRUClassifier(X_train.shape[1],n_classes=n_classes).to(device)
     #model = LinearClassifier(X_train.shape[1],n_classes=n_classes).to(device)
-    model = DNNClassifier(X_train.shape[1],n_classes=n_classes).to(device)
-    #model = LSTMClassifier(X_train.shape[1],n_classes=n_classes).to
+    #model = DNNClassifier(X_train.shape[1],n_classes=n_classes).to(device)
+    #model = LSTMClassifier(X_train.shape[1],n_classes=n_classes).to(device)
+    model = LogisticRegression(X_train.shape[1],n_classes=n_classes).to(device)
 
     model = train_model(model,train_loader,test_loader,device)
 
-    from pathlib import Path
+    
 
-    Path("./models").mkdir(parents=True, exist_ok=True)
+    module_path = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
+    dataset_path_train = module_path / "models"
+    Path(dataset_path_train).mkdir(parents=True, exist_ok=True)
 
     torch.save({
         #"model_type": "gru",
-        "model_type": "dnn",
+        "model_type": "logistic_regression",
         "model_state": model.state_dict(),
         "label_map": label_map,
         "vectorizer": vectorizer
-    }, "./models/model.pth")
+    }, f"{dataset_path_train}/model.pth")
 
     print("Model saved.")
 

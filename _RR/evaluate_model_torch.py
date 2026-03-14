@@ -5,6 +5,7 @@ import numpy as np
 import re
 import matplotlib.pyplot as plt
 import torch.nn as nn
+from pathlib import Path
 
 class GRUClassifier(nn.Module):
 
@@ -36,6 +37,19 @@ class LinearClassifier(nn.Module):
 
     def forward(self,x):
         return self.fc(x)
+
+class LogisticRegression(nn.Module):
+
+    def __init__(self,input_dim,n_classes):
+
+        super().__init__()
+
+        self.linear = nn.Linear(input_dim,n_classes)
+
+    def forward(self,x):
+
+        return self.linear(x)
+
 
 class DNNClassifier(nn.Module):
 
@@ -156,7 +170,10 @@ def load_model(model_path):
     n_classes = len(label_map)
 
     #model = GRUClassifier(input_dim, n_classes=n_classes)
-    model = LinearClassifier(input_dim, n_classes=n_classes)
+    #model = LinearClassifier(input_dim, n_classes=n_classes)
+    #model = DNNClassifier(input_dim, n_classes=n_classes)
+    #model = LSTMClassifier(input_dim, n_classes=n_classes)
+    model = LogisticRegression(input_dim, n_classes=n_classes)
 
     model.load_state_dict(checkpoint["model_state"])
 
@@ -207,12 +224,27 @@ def evaluate_dataset(model, vectorizer, label_map, csv_path):
 
 def main():
 
-    model_path = "./models/model.pth"
+    module_path = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
+    dataset_path_model = module_path / "models"
+    Path(dataset_path_model).mkdir(parents=True, exist_ok=True)
+    dataset_path_validate = module_path / "data"
 
-    dataset_path = "./models/dataset-exemplos.csv"
+    model_path = f"{dataset_path_model}\model.pth"
 
+    print(f"Model path: {model_path}")
+    dataset_path = f"{dataset_path_validate}\dataset-exemplos.csv"
+    print(f"Dataset path: {dataset_path}")
     model, vectorizer, label_map = load_model(model_path)
 
+    evaluate_dataset(
+        model,
+        vectorizer,
+        label_map,
+        dataset_path
+    )
+
+
+    dataset_path2 = f"{dataset_path_validate}\subm1.csv"
     evaluate_dataset(
         model,
         vectorizer,
