@@ -35,7 +35,7 @@ def get_otb_dataset(n_lines: int = 10000) -> pd.DataFrame:
     mapping_classes = {
         "meta-llama": "Meta",
         "qwen": "OpenAI",
-        "mistralai": "Mistral",
+        # "mistralai": "Mistral",
         "google": "Google",
         "anthropic": "Anthropic",
     }

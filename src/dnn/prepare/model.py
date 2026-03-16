@@ -13,7 +13,7 @@ from dnn.layers.activation import ReLU, Softmax, Dropout
 
 
 class Model:
-    def __init__(self, n_classes: int = 6):
+    def __init__(self, n_classes: int = 5):
         self.nn = NeuralNetwork()
         self.nn.add_layer(DenseLayer(256))
         self.nn.add_layer(ReLU())
@@ -118,10 +118,10 @@ class Model:
                 print("True label distribution:", np.bincount(y_num, minlength=n_classes))
             print(f"Test Accuracy: {accuracy:.4f}")
 
-        if num_to_label is None:
-            return y, predicted_labels.tolist()
+            if num_to_label is None:
+                return y, predicted_labels.tolist()
 
-        self.print_confusion_matrix(y, [num_to_label[i] for i in predicted_labels])
+            self.print_confusion_matrix(y, [num_to_label[i] for i in predicted_labels])
 
         return [num_to_label[i] for i in predicted_labels]
 
