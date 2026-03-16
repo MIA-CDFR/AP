@@ -1,5 +1,6 @@
 from pathlib import Path
 import csv
+from pyexpat import model
 import numpy as np
 import pandas as pd
 import pickle
@@ -19,10 +20,10 @@ def preprocess_text(text):
     text = str(text).lower()
 
     text = re.sub(r"<.*?>", "", text)
-    text = re.sub(r"\d+", "", text)
-    text = re.sub(r"[^\w\s]", "", text)
+    #text = re.sub(r"\d+", "", text)
+    #text = re.sub(r"[^\w\s]", "", text)
     text = re.sub(r"\s+", " ", text).strip()
-    text = re.sub(r"[^a-zA-Z ]", " ", text)
+    #text = re.sub(r"[^a-zA-Z ]", " ", text)
 
     return text
 
@@ -31,7 +32,7 @@ def preprocess_text(text):
 # VOCAB + BAG OF WORDS
 ############################################################
 
-def build_vocab(texts, max_words=15000):
+def build_vocab(texts, max_words=30000):
 
     counter = Counter()
 
@@ -134,13 +135,18 @@ def text_to_tfidf(text, vocab, idf):
     if len(tokens) > 0:
         tf = tf / len(tokens)
 
+    # log scaling apenas para valores > 0
+    tf[tf > 0] = 1 + np.log(tf[tf > 0])
+
     tfidf = tf * idf
 
     norm = np.linalg.norm(tfidf)
+
     if norm > 0:
         tfidf = tfidf / norm
 
     return tfidf
+
 
 def build_dataset_tfidf(df, vocab, idf):
 
@@ -155,6 +161,7 @@ def build_dataset_tfidf(df, vocab, idf):
         y.append(row["Label"])
 
     return np.array(X), np.array(y)
+
 
 ############################################################
 # DATASET WRAPPER
@@ -415,7 +422,7 @@ class NeuralNetwork:
 
     def __init__(
         self,
-        epochs=10,
+        epochs=50,
         batch_size=64,
         learning_rate=0.01,
         momentum=0.9,
@@ -768,16 +775,82 @@ def evaluate_csv(model_path,csv_path):
 
     return df
 
+def evaluate_csv_2(model_path, csv_path, output_path=None):
 
+    print("Loading model...")
+    model, vocab, label_map, idf = load_model(model_path)
+
+    print("Model loaded.")
+
+    df = read_csv_smart(csv_path)
+    df = ensure_required_columns(df, ["Text"])
+
+    print("Dataset loaded:", len(df))
+
+    ############################################
+    # TEXT -> TFIDF
+    ############################################
+
+    X = np.array([
+        text_to_tfidf(text, vocab, idf)
+        for text in df["Text"]
+    ])
+
+    dataset = Dataset(X, None)
+
+    preds = model.predict(dataset)
+
+    y_pred = np.argmax(preds, axis=1)
+
+    inv_labels = {v: k for k, v in label_map.items()}
+
+    df["Prediction"] = [inv_labels[p] for p in y_pred]
+
+    ############################################
+    # IF LABEL EXISTS -> EVALUATE
+    ############################################
+
+    if "Label" in df.columns:
+
+        y_true = np.array([label_map[l] for l in df["Label"]])
+
+        accuracy = np.mean(y_true == y_pred)
+
+        print("Accuracy:", accuracy)
+
+        cm = confusion_matrix(y_true, y_pred, len(label_map))
+
+        print_confusion_matrix(cm, label_map)
+
+        plot_confusion_matrix(cm, label_map)
+
+    else:
+
+        print("No labels found -> predictions only")
+
+    ############################################
+    # SAVE OUTPUT
+    ############################################
+
+    if output_path:
+        df.to_csv(output_path, index=False)
+        print("Predictions saved to:", output_path)
+        df.to_csv(output_path, index=False)
+
+    print("Predictions saved to:", output_path)
+
+    return df
 ############################################################
 # TRAINING PIPELINE
 ############################################################
 
-def train_model(csv_path, model_path):
+def train_model(csv_path, df_train, df_test, model_path):
 
-    df = read_csv_smart(csv_path)
-    df_train = df.groupby("Label").sample(frac=0.8, random_state=42)
-    df_test = df.drop(df_train.index)
+    if df_train is None:
+        df = read_csv_smart(csv_path)
+
+        df_train = df.groupby("Label").sample(frac=0.8, random_state=42)
+        df_test = df.drop(df_train.index)
 
     df_train = ensure_required_columns(df_train, ["Text", "Label"])
     df_test = ensure_required_columns(df_test, ["Text", "Label"])
@@ -826,15 +899,20 @@ def train_model(csv_path, model_path):
 
     model = NeuralNetwork()
 
-    model.add(DenseLayer(256, input_shape=(X.shape[1],)))
+    model.add(DenseLayer(512, input_shape=(X.shape[1],)))
     model.add(ReLU())
-    model.add(Dropout(0.2))
+    model.add(Dropout(0.4))
+
+    model.add(DenseLayer(256))
+    model.add(ReLU())
+    model.add(Dropout(0.3))
 
     model.add(DenseLayer(64))
     model.add(ReLU())
 
     model.add(DenseLayer(n_classes))
     model.add(Softmax())
+
 
     model.fit(dataset)
 
@@ -870,60 +948,277 @@ def train_model(csv_path, model_path):
 ############################################################
 # LOAD DATASET, TRAIN MODEL, EVALUATE CSV
 ############################################################
+def load_data():
 
-def loadCSV(csv_path, name, df=None):
+    ############################################
+    # OPENTURINGBENCH
+    ############################################
 
-    dataset = load_dataset(csv_path, name=name)
-    print(dataset)
+    dataset = load_dataset("MLNTeam-Unical/OpenTuringBench", name="in_domain")
+
+    df_train = dataset["train"].to_pandas().sample(40000, random_state=42)
+    df_test = dataset["test"].to_pandas().sample(10000, random_state=42)
+
+    df_train.rename(columns={"content": "Text", "model": "Label"}, inplace=True)
+    df_test.rename(columns={"content": "Text", "model": "Label"}, inplace=True)
+
+    ############################################
+    # HUMAN DATASET
+    ############################################
+
+    dataset_h = load_dataset("artem9k/ai-text-detection-pile")
+
+    df_h = dataset_h["train"].to_pandas()
+
+    df_h = df_h[df_h["source"] == "human"]
+    df_h["Text"] = df_h["text"]
+    df_h["Label"] = "Human"
+
+    # limitar dataset para não carregar 1M exemplos
+    df_h = df_h.sample(10000, random_state=42)
+
+    df_h_train = df_h.sample(frac=0.8, random_state=42)
+    df_h_test = df_h.drop(df_h_train.index)
+
+    ############################################
+    # ANTHROPIC DATASET
+    ############################################
+
+    datasetA = load_dataset("Anthropic/persuasion")
+
+    dfA = datasetA["train"].to_pandas()
+
+    dfA["Text"] = dfA["argument"]
+    dfA["Label"] = dfA["source"].apply(
+        lambda x: "Anthropic" if str(x).startswith("Claude") else "Human"
+    )
+
+    dfA_train = dfA.sample(frac=0.8, random_state=42)
+    dfA_test = dfA.drop(dfA_train.index)
+
+    ############################################
+    # MERGE DATASETS
+    ############################################
+
+    df_train = pd.concat([df_train, df_h_train, dfA_train], ignore_index=True)
+    df_test = pd.concat([df_test, df_h_test, dfA_test], ignore_index=True)
+
+    ############################################
+    # NORMALIZE LABELS
+    ############################################
+
+    mapping_classes = {
+        "meta-llama": "Meta",
+        "qwen": "OpenAI",
+        "mistralai": "Mistral",
+        "google": "Google",
+        "anthropic": "Anthropic",
+        "human": "Human",
+    }
+
+    def normalize_label(label):
+
+        key = str(label).split("/")[0].lower()
+        return mapping_classes.get(key, label)
+
+    df_train["Label"] = df_train["Label"].apply(normalize_label)
+    df_test["Label"] = df_test["Label"].apply(normalize_label)
+
+    ############################################
+    # KEEP ONLY TARGET CLASSES
+    ############################################
+
+    allowed = ["Meta", "OpenAI", "Mistral", "Google", "Anthropic", "Human"]
+
+    df_train = df_train[df_train["Label"].isin(allowed)]
+    df_test = df_test[df_test["Label"].isin(allowed)]
+
+
+    ############################################
+    # BALANCE DATASET
+    ############################################
+
+    def balanced_sample(df, n=1000):
+
+        dfs = []
+
+        for label in allowed:
+
+            subset = df[df["Label"] == label]
+
+            if len(subset) >= n:
+                dfs.append(subset.sample(n, random_state=42))
+            else:
+                print(f"Warning: only {len(subset)} samples for {label}")
+                dfs.append(subset)
+
+        return pd.concat(dfs, ignore_index=True)
+
+    df_train = balanced_sample(df_train, 6000)
+    df_test = balanced_sample(df_test, 1000)
+
+    ############################################
+    # INFO
+    ############################################
+
+    print("\nTrain distribution:")
+    print(df_train["Label"].value_counts())
+
+    print("\nTest distribution:")
+    print(df_test["Label"].value_counts())
+
+    return df_train, df_test
+
+def load_datasets():
+
+    ############################################
+    # OPENTURINGBENCH
+    ############################################
+
+    dataset = load_dataset("MLNTeam-Unical/OpenTuringBench", name="in_domain")
+
     df_train = dataset["train"].to_pandas()
-    if(name == "in_domain"):
-        df_test = dataset["test"].to_pandas()
+    df_test = dataset["test"].to_pandas()
 
-        df_train.rename(columns={"content": "Text", "model": "Label"}, inplace=True)
-        df_train.drop(columns=["url"], inplace=True)
-        df_train.insert(0, "ID", df_train.index + 1)
+    df_train.rename(columns={"content":"Text","model":"Label"}, inplace=True)
+    df_test.rename(columns={"content":"Text","model":"Label"}, inplace=True)
 
-        df_test.rename(columns={"content": "Text", "model": "Label"}, inplace=True)
-        df_test.drop(columns=["url"], inplace=True)
-        df_test.insert(0, "ID", df_test.index + 1)
-    else:
-        df_test = None
-        df_train.rename(columns={"text": "Text", "source": "Label", "id": "ID"}, inplace=True)
+    df = pd.concat([df_train, df_test], ignore_index=True)
 
-    df = pd.concat([df, df_train, df_test], ignore_index=True)
+    ############################################
+    # HUMAN DATASET
+    ############################################
+
+    dataset_h = load_dataset(
+        "artem9k/ai-text-detection-pile",
+        split="train[:50000]"
+    )
+
+    dataset_h = dataset_h.filter(lambda x: x["source"] == "human")
+
+    df_h = dataset_h.to_pandas()
+
+    df_h = dataset_h["train"].to_pandas()
+
+    df_h = df_h[df_h["source"] == "human"]
+
+    df_h["Text"] = df_h["text"]
+    df_h["Label"] = "Human"
+
+    df = pd.concat([df, df_h[["Text","Label"]]], ignore_index=True)
+
+    ############################################
+    # ANTHROPIC DATASET
+    ############################################
+
+    datasetA = load_dataset("Anthropic/persuasion")
+
+    dfA = datasetA["train"].to_pandas()
+
+    dfA["Text"] = dfA["argument"]
+    dfA["Label"] = dfA["source"]
+    # dfA["Label"] = dfA["source"].apply(
+    #     lambda x: "Anthropic" if str(x).startswith("Claude") else "Human"
+    # )
+    dfA = dfA[dfA["Label"] == "Anthropic"]
+
+    df = pd.concat([df, dfA[["Text","Label"]]], ignore_index=True)
+
+    ############################################
+    # NORMALIZE LABELS
+    ############################################
+
+    mapping_classes = {
+        "meta-llama": "Meta",
+        "qwen": "OpenAI",
+        "mistralai": "Mistral",
+        "google": "Google",
+        "anthropic": "Anthropic",
+        "human": "Human",
+    }
+
+    df["Label"] = df["Label"].apply(
+        lambda x: mapping_classes.get(str(x).split("/")[0].lower(), "Others")
+    )
+
+    df = df[df["Label"] != "Others"]
 
     return df
 
+# def loadCSV(csv_path, name, df=None):
 
-df1 = loadCSV("MLNTeam-Unical/OpenTuringBench", name="in_domain")
-df = loadCSV("artem9k/ai-text-detection-pile", name="", df=df1)
+#     dataset = load_dataset(csv_path, name=name)
+#     print(dataset)
+#     df_train = dataset["train"].to_pandas()
+#     if(name == "in_domain"):
+#         df_test = dataset["test"].to_pandas()
 
+#         df_train.rename(columns={"content": "Text", "model": "Label"}, inplace=True)
+#         df_train.drop(columns=["url"], inplace=True)
+#         df_train.insert(0, "ID", df_train.index + 1)
+
+#         df_test.rename(columns={"content": "Text", "model": "Label"}, inplace=True)
+#         df_test.drop(columns=["url"], inplace=True)
+#         df_test.insert(0, "ID", df_test.index + 1)
+#     else:
+#         df_test = None
+#         df_train.rename(columns={"text": "Text", "source": "Label", "id": "ID"}, inplace=True)
+
+#     df = pd.concat([df, df_train, df_test], ignore_index=True)
+
+#     return df
+
+
+# df1 = loadCSV("MLNTeam-Unical/OpenTuringBench", name="in_domain")
+# df = loadCSV("artem9k/ai-text-detection-pile", name="", df=df1)
+
+
+
+
+df_train,df_test = load_data()
+
+df_train["Text"] = df_train["Text"].apply(preprocess_text)
+df_test["Text"] = df_test["Text"].apply(preprocess_text)
+
+
+y_train,label_map = encode_labels(df_train["Label"])
+y_test = np.array([label_map[l] for l in df_test["Label"]])
+
+
+
+
+
+# df = load_datasets()
+# n = min(10000, df["Label"].value_counts().min())
+# df = df.groupby("Label").sample(n, random_state=42)
+
+# module_path = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
+
+# dataset_path_train = module_path / "data" / "dataset-hf_train.csv"
+
+# mapping_classes = {
+#     "meta-llama": "Meta",
+#     "qwen": "OpenAI",
+#     "mistralai": "Mistral",
+#     "google": "Google",
+#     "anthropic": "Anthropic",
+#     "human": "Human",
+# }
+
+# df["Label"] = df["Label"].apply(lambda x: mapping_classes.get(x.split("/")[0].lower(), "Others"))
+
+# df = df[df["Label"] != "Others"]
+
+# df = df.head(50000).sample(10000, random_state=42)
+# df[["Text","Label"]].to_csv(dataset_path_train, index=False)
+
+# print(df)
 
 module_path = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
-
-dataset_path_train = module_path / "data" / "dataset-hf_train.csv"
-
-mapping_classes = {
-    "meta-llama": "Meta",
-    "qwen": "OpenAI",
-    "mistralai": "Mistral",
-    "google": "Google",
-    "anthropic": "Anthropic",
-    "human": "Human",
-}
-
-df["Label"] = df["Label"].apply(lambda x: mapping_classes.get(x.split("/")[0].lower(), "Others"))
-
-df = df[df["Label"] != "Others"]
-
-df = df.head(50000).sample(10000, random_state=42)
-df[["Text","Label"]].to_csv(dataset_path_train, index=False)
-
-print(df)
-
-
 train_model(
-    dataset_path_train,
+    None,
+    df_train,
+    df_test,
     f"{module_path}/models/model.pkl"
 )
 
@@ -936,14 +1231,14 @@ train_model(
 #                 return pickle.load(file)
 
 
-dataset_path_test = module_path / "data" / "dataset-hf_test.csv"
-df = df.tail(5000).sample(100, random_state=42)
-df[["Text","Label"]].to_csv(dataset_path_test, index=False)
+# dataset_path_test = module_path / "data" / "dataset-hf_test.csv"
+# df = df.tail(5000).sample(100, random_state=42)
+# df[["Text","Label"]].to_csv(dataset_path_test, index=False)
 
-df = evaluate_csv(
-    f"{module_path}/models/model.pkl",
-   dataset_path_test
-)
+# df = evaluate_csv(
+#     f"{module_path}/models/model.pkl",
+#    dataset_path_test
+# )
 
 dataset_path_test_prof = module_path / "data" / "dataset-exemplos.csv"
 df = evaluate_csv(
@@ -951,3 +1246,11 @@ df = evaluate_csv(
    dataset_path_test_prof
 )
 
+
+dataset_path_test_prof_2 = module_path / "data" / "subm1.csv"
+output_path = module_path / "data" / "subm0_predictions.csv"
+df = evaluate_csv_2(
+    f"{module_path}/models/model.pkl",
+   dataset_path_test_prof_2,
+   output_path
+)

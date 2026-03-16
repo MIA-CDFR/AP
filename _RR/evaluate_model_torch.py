@@ -6,6 +6,7 @@ import re
 import matplotlib.pyplot as plt
 import torch.nn as nn
 from pathlib import Path
+import csv
 
 class GRUClassifier(nn.Module):
 
@@ -59,15 +60,15 @@ class DNNClassifier(nn.Module):
 
         self.net = nn.Sequential(
 
-            nn.Linear(input_dim,256),
+            nn.Linear(input_dim,512),
+            nn.ReLU(),
+            nn.Dropout(0.4),
+
+            nn.Linear(512,256),
             nn.ReLU(),
             nn.Dropout(0.3),
 
-            nn.Linear(256,128),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-
-            nn.Linear(128,n_classes)
+            nn.Linear(256,n_classes)
 
         )
 
@@ -182,15 +183,46 @@ def load_model(model_path):
     return model, vectorizer, label_map
 
 
+############################################################
+# CSV VALIDATION
+############################################################
+
+def read_csv_smart(csv_path):
+
+    with open(csv_path, "r", encoding="utf-8-sig", newline="") as f:
+        sample = f.read(4096)
+
+    delimiter = None
+    try:
+        delimiter = csv.Sniffer().sniff(sample, delimiters=";,\t|").delimiter
+    except csv.Error:
+        pass
+
+    if delimiter:
+        df = pd.read_csv(csv_path, sep=delimiter, encoding="utf-8-sig")
+    else:
+        df = pd.read_csv(csv_path, sep=None, engine="python", encoding="utf-8-sig")
+
+    df.columns = [str(col).replace("\ufeff", "").strip() for col in df.columns]
+
+    # Fallback for files that were parsed into a single "ID,Text,Label" column.
+    if len(df.columns) == 1 and "," in df.columns[0]:
+        df = pd.read_csv(csv_path, sep=",", encoding="utf-8-sig")
+        df.columns = [str(col).replace("\ufeff", "").strip() for col in df.columns]
+
+    return df
+
 ############################################
 # EVALUATE DATASET
 ############################################
 
-def evaluate_dataset(model, vectorizer, label_map, csv_path):
+def evaluate_dataset(model, vectorizer, label_map, csv_path, output_path=None):
 
     print(f"\nLoading dataset: {csv_path}")
 
-    df = pd.read_csv(csv_path)
+    #df = pd.read_csv(csv_path)
+    df = read_csv_smart(csv_path)
+
     print(f"Dataset loaded: {len(df)} samples")
 
     df["Text"] = df["Text"].apply(preprocess_text)
@@ -199,7 +231,11 @@ def evaluate_dataset(model, vectorizer, label_map, csv_path):
 
     X = torch.tensor(X.toarray(), dtype=torch.float32)
     
-    y_true = np.array([label_map[l] for l in df["Label"]])
+    #y_true = np.array([label_map[l] for l in df["Label"]])
+    if "Label" in df.columns:
+        y_true = np.array([label_map[l] for l in df["Label"]])
+    else:
+        y_true = None
 
     with torch.no_grad():
 
@@ -209,11 +245,34 @@ def evaluate_dataset(model, vectorizer, label_map, csv_path):
 
     accuracy = np.mean(preds == y_true)
 
-    print("Accuracy:", accuracy)
+    #print("Accuracy:", accuracy)
+    # if y_true is not None:
+    #     accuracy = np.mean(preds == y_true)
+    #     print("Accuracy:", accuracy)
+    #     cm = (y_true, preds, len(label_map))
+    #     print(cm)
+    #     plot_confusion_matrix(cm, list(label_map.keys()))
 
-    cm = confusion_matrix(y_true, preds, len(label_map))
+    if y_true is not None:
+        accuracy = np.mean(preds == y_true)
+        print("Accuracy:", accuracy)
 
-    plot_confusion_matrix(cm, list(label_map.keys()))
+        cm = confusion_matrix(y_true, preds, len(label_map))
+
+        print(cm)
+
+        plot_confusion_matrix(cm, list(label_map.keys()))        
+    #cm = confusion_matrix(y_true, preds, len(label_map))
+
+    #plot_confusion_matrix(cm, list(label_map.keys()))
+    #confusion_matrix(y_true, preds, len(label_map))
+
+    inv_labels = {v:k for k,v in label_map.items()}
+    df["Prediction"] = [inv_labels[p] for p in preds]
+
+    if output_path:
+        df.to_csv(output_path, index=False)
+        print("Predictions saved to submission.csv")
 
     return accuracy
 
@@ -240,18 +299,28 @@ def main():
         model,
         vectorizer,
         label_map,
-        dataset_path
+        dataset_path,
+        None
     )
 
 
     dataset_path2 = f"{dataset_path_validate}\subm1.csv"
+    dataset_path3 = f"{dataset_path_validate}\subm1_result.csv"
     evaluate_dataset(
         model,
         vectorizer,
         label_map,
-        dataset_path
+        dataset_path2,
+        output_path=dataset_path3
     )
 
+    evaluate_dataset(
+        model,
+        vectorizer,
+        label_map,
+        dataset_path3,
+        None
+    )
 
 if __name__ == "__main__":
     main()

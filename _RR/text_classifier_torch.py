@@ -11,7 +11,7 @@ from datasets import load_dataset
 from torch.utils.tensorboard import SummaryWriter
 import matplotlib.pyplot as plt
 from pathlib import Path
-from pathlib import Path
+
 
 ############################################
 # TEXT PREPROCESSING
@@ -22,7 +22,7 @@ def preprocess_text(text):
     text = str(text).lower()
 
     text = re.sub(r"<.*?>","",text)
-    text = re.sub(r"\d+","",text)
+    #text = re.sub(r"\d+","",text)
     text = re.sub(r"[^\w\s]","",text)
     text = re.sub(r"\s+"," ",text).strip()
 
@@ -74,9 +74,11 @@ def load_data():
     dfA = datasetA["train"].to_pandas()
 
     dfA["Text"] = dfA["argument"]
+    #dfA["Label"] = dfA["source"]
     dfA["Label"] = dfA["source"].apply(
-        lambda x: "Anthropic" if str(x).startswith("Claude") else "Human"
+        lambda x: "Anthropic" if str(x).find("Claude") != -1 else "Other"
     )
+    dfA = dfA[dfA["Label"] == "Anthropic"]
 
     dfA_train = dfA.sample(frac=0.8, random_state=42)
     dfA_test = dfA.drop(dfA_train.index)
@@ -95,7 +97,7 @@ def load_data():
     mapping_classes = {
         "meta-llama": "Meta",
         "qwen": "OpenAI",
-        "mistralai": "Mistral",
+        #"mistralai": "Mistral",
         "google": "Google",
         "anthropic": "Anthropic",
         "human": "Human",
@@ -113,7 +115,8 @@ def load_data():
     # KEEP ONLY TARGET CLASSES
     ############################################
 
-    allowed = ["Meta", "OpenAI", "Mistral", "Google", "Anthropic", "Human"]
+    #allowed = ["Meta", "OpenAI", "Mistral", "Google", "Anthropic", "Human"]
+    allowed = ["Meta", "OpenAI", "Google", "Anthropic", "Human"]
 
     df_train = df_train[df_train["Label"].isin(allowed)]
     df_test = df_test[df_test["Label"].isin(allowed)]
@@ -138,8 +141,8 @@ def load_data():
 
         return pd.concat(dfs, ignore_index=True)
 
-    df_train = balanced_sample(df_train, 1000)
-    df_test = balanced_sample(df_test, 1000)
+    df_train = balanced_sample(df_train, 6000)
+    df_test = balanced_sample(df_test, 500)
 
     ############################################
     # INFO
@@ -209,11 +212,14 @@ class TextDataset(Dataset):
 def build_vectorizer():
 
     return TfidfVectorizer(
-        max_features=12000,
-        ngram_range=(1,2),
-        min_df=5,
+        max_features=30000,
+        ngram_range=(1,3),
+        min_df=3,
+        max_df=0.9,
+        sublinear_tf=True,
         stop_words="english"
     )
+
 
 
 ############################################
@@ -241,15 +247,15 @@ class DNNClassifier(nn.Module):
 
         self.net = nn.Sequential(
 
-            nn.Linear(input_dim,256),
+            nn.Linear(input_dim,512),
+            nn.ReLU(),
+            nn.Dropout(0.4),
+
+            nn.Linear(512,256),
             nn.ReLU(),
             nn.Dropout(0.3),
 
-            nn.Linear(256,128),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-
-            nn.Linear(128,n_classes)
+            nn.Linear(256,n_classes)
 
         )
 
