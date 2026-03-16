@@ -141,7 +141,7 @@ def load_data():
 
         return pd.concat(dfs, ignore_index=True)
 
-    df_train = balanced_sample(df_train, 6000)
+    df_train = balanced_sample(df_train, 2000)
     df_test = balanced_sample(df_test, 500)
 
     ############################################
@@ -501,9 +501,9 @@ def main():
 
     #model = GRUClassifier(X_train.shape[1],n_classes=n_classes).to(device)
     #model = LinearClassifier(X_train.shape[1],n_classes=n_classes).to(device)
-    #model = DNNClassifier(X_train.shape[1],n_classes=n_classes).to(device)
+    model = DNNClassifier(X_train.shape[1],n_classes=n_classes).to(device)
     #model = LSTMClassifier(X_train.shape[1],n_classes=n_classes).to(device)
-    model = LogisticRegression(X_train.shape[1],n_classes=n_classes).to(device)
+    #model = LogisticRegression(X_train.shape[1],n_classes=n_classes).to(device)
 
     model = train_model(model,train_loader,test_loader,device)
 
@@ -515,7 +515,7 @@ def main():
 
     torch.save({
         #"model_type": "gru",
-        "model_type": "logistic_regression",
+        "model_type": "dnn",
         "model_state": model.state_dict(),
         "label_map": label_map,
         "vectorizer": vectorizer

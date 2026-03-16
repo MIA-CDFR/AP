@@ -422,7 +422,7 @@ class NeuralNetwork:
 
     def __init__(
         self,
-        epochs=50,
+        epochs=5,
         batch_size=64,
         learning_rate=0.01,
         momentum=0.9,
@@ -899,17 +899,18 @@ def train_model(csv_path, df_train, df_test, model_path):
 
     model = NeuralNetwork()
 
-    model.add(DenseLayer(512, input_shape=(X.shape[1],)))
+    model.add(DenseLayer(256, input_shape=(X.shape[1],)))
     model.add(ReLU())
     model.add(Dropout(0.4))
 
-    model.add(DenseLayer(256))
+    model.add(DenseLayer(128))
     model.add(ReLU())
     model.add(Dropout(0.3))
 
     model.add(DenseLayer(64))
     model.add(ReLU())
-
+    model.add(Dropout(0.3))
+    
     model.add(DenseLayer(n_classes))
     model.add(Softmax())
 
@@ -1010,7 +1011,7 @@ def load_data():
     mapping_classes = {
         "meta-llama": "Meta",
         "qwen": "OpenAI",
-        "mistralai": "Mistral",
+        #"mistralai": "Mistral",
         "google": "Google",
         "anthropic": "Anthropic",
         "human": "Human",
@@ -1028,7 +1029,8 @@ def load_data():
     # KEEP ONLY TARGET CLASSES
     ############################################
 
-    allowed = ["Meta", "OpenAI", "Mistral", "Google", "Anthropic", "Human"]
+    #allowed = ["Meta", "OpenAI", "Mistral", "Google", "Anthropic", "Human"]
+    allowed = ["Meta", "OpenAI", "Google", "Anthropic", "Human"]
 
     df_train = df_train[df_train["Label"].isin(allowed)]
     df_test = df_test[df_test["Label"].isin(allowed)]
@@ -1054,8 +1056,8 @@ def load_data():
 
         return pd.concat(dfs, ignore_index=True)
 
-    df_train = balanced_sample(df_train, 6000)
-    df_test = balanced_sample(df_test, 1000)
+    df_train = balanced_sample(df_train, 2000)
+    df_test = balanced_sample(df_test, 500)
 
     ############################################
     # INFO
@@ -1131,7 +1133,7 @@ def load_datasets():
     mapping_classes = {
         "meta-llama": "Meta",
         "qwen": "OpenAI",
-        "mistralai": "Mistral",
+        #"mistralai": "Mistral",
         "google": "Google",
         "anthropic": "Anthropic",
         "human": "Human",

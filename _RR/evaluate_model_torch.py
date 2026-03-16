@@ -156,6 +156,24 @@ def plot_confusion_matrix(cm, labels):
 
 import torch
 
+def build_model_from_type(model_type, input_dim, n_classes):
+
+    model_builders = {
+        "gru": lambda: GRUClassifier(input_dim, n_classes=n_classes),
+        "linear": lambda: LinearClassifier(input_dim, n_classes=n_classes),
+        "dnn": lambda: DNNClassifier(input_dim, n_classes=n_classes),
+        "lstm": lambda: LSTMClassifier(input_dim, n_classes=n_classes),
+        "logistic_regression": lambda: LogisticRegression(input_dim, n_classes=n_classes),
+    }
+
+    normalized_model_type = str(model_type).strip().lower()
+
+    if normalized_model_type not in model_builders:
+        available = ", ".join(sorted(model_builders))
+        raise ValueError(f"Unsupported model_type '{model_type}'. Expected one of: {available}")
+
+    return model_builders[normalized_model_type]()
+
 def load_model(model_path):
 
     checkpoint = torch.load(
@@ -166,21 +184,19 @@ def load_model(model_path):
 
     vectorizer = checkpoint["vectorizer"]
     label_map = checkpoint["label_map"]
+    model_type = checkpoint.get("model_type")
+    print(f"Loaded model type from checkpoint: {model_type}")
     
     input_dim = len(vectorizer.get_feature_names_out())
     n_classes = len(label_map)
 
-    #model = GRUClassifier(input_dim, n_classes=n_classes)
-    #model = LinearClassifier(input_dim, n_classes=n_classes)
-    #model = DNNClassifier(input_dim, n_classes=n_classes)
-    #model = LSTMClassifier(input_dim, n_classes=n_classes)
-    model = LogisticRegression(input_dim, n_classes=n_classes)
+    model = build_model_from_type(model_type, input_dim, n_classes)
 
     model.load_state_dict(checkpoint["model_state"])
 
     model.eval()
 
-    return model, vectorizer, label_map
+    return model, vectorizer, label_map, model_type
 
 
 ############################################################
@@ -293,7 +309,8 @@ def main():
     print(f"Model path: {model_path}")
     dataset_path = f"{dataset_path_validate}\dataset-exemplos.csv"
     print(f"Dataset path: {dataset_path}")
-    model, vectorizer, label_map = load_model(model_path)
+    model, vectorizer, label_map, model_type = load_model(model_path)
+    print(f"Model type: {model_type}")
 
     evaluate_dataset(
         model,
