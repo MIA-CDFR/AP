@@ -13,7 +13,8 @@
             "cwd": "${workspaceFolder}/src",
             "env": {
                 "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION": "python"
-            }
+            },
+            "args": ["--eval-revealed"]
         }
     ]
 }

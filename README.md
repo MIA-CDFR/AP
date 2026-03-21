@@ -149,6 +149,24 @@ Run the full train-save-load-evaluate flow with:
 python src/dnn/main.py
 ```
 
+To train specifically with the revealed submission labels file (`src/dnn/data/subm1_labels_revealed.csv`), use:
+
+```bash
+python src/dnn/main.py --dataset revealed
+```
+
+To force training/evaluation on the full revealed set (memorization mode):
+
+```bash
+python src/dnn/main.py --dataset revealed --fit-all
+```
+
+To use a custom revealed CSV path:
+
+```bash
+python src/dnn/main.py --dataset revealed --revealed-path /path/to/subm1_labels_revealed.csv
+```
+
 The current `src/dnn/main.py` flow is:
 
 1. load datasets with `DatasetLoader`
