@@ -162,8 +162,8 @@ class DatasetLoader:
         cls.y_train = df_train["Label_num"].values
         cls.y_test = df_test["Label_num"].values
 
-        cls.tfidf_word = TFIDF(analyzer="word", ngram_range=(1, 2), max_features=5000)
-        cls.tfidf_char = TFIDF(analyzer="char", ngram_range=(3, 5), max_features=5000)
+        cls.tfidf_word = TFIDF(analyzer="word", ngram_range=(1, 2), max_features=10000)
+        cls.tfidf_char = TFIDF(analyzer="char", ngram_range=(3, 5), max_features=10000)
 
         X_word_train = cls.tfidf_word.fit_transform(df_train["Text_clean"].tolist())
         X_word_test = cls.tfidf_word.transform(df_test["Text_clean"].tolist())
