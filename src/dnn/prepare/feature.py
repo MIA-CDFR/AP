@@ -23,7 +23,8 @@ def extract_features(raw_text, clean_text):
     sentence_lengths = [len(preprocess_text(s).split()) for s in sentences]
 
     word_counts = Counter(words)
-    punctuation = {p: raw_text.count(p) for p in [",", ".", ";", ":", "!", "?"]}
+    # Only keep punctuation marks with actual signal (! and ? are ~0 in scientific text)
+    punctuation = {p: raw_text.count(p) for p in [",", ".", ";", ":"]}
     n_chars = len(raw_text) if raw_text else 1
 
     features = {}
@@ -62,29 +63,20 @@ def extract_features(raw_text, clean_text):
     n_contractions = len(re.findall(r"\b\w+'\w+\b", raw_text))
     features["contraction_ratio"] = n_contractions / num_words if num_words > 0 else 0.0
 
-    # Repeated characters: loool, nooo, yesss (informal/expressive)
-    features["char_repeat_count"] = len(re.findall(r"(.)\1{2,}", raw_text)) / n_chars
-
-    # All-caps words: GREAT, WOW, NO (human emphasis)
+    # All-caps words: acronyms like DNA, PFAS, H5N1 — higher in human scientific papers
     all_caps_words = [w for w in raw_text.split() if len(w) > 1 and w.isupper()]
     features["allcaps_word_ratio"] = len(all_caps_words) / num_words if num_words > 0 else 0.0
 
-    # Multiple punctuation: !!, ??, !? (informal)
-    features["multi_punct_count"] = len(re.findall(r"[!?]{2,}", raw_text)) / n_chars
-
-    # Ellipsis usage: ... (human trailing thought)
-    features["ellipsis_count"] = raw_text.count("...") / n_chars
-
-    # Missing space after punctuation: "hello.World" (typo/informal)
+    # Missing space after punctuation (e.g. "e.g." or inline formula references)
     features["missing_space_after_punct"] = len(re.findall(r"[.!?,;:][A-Za-z]", raw_text)) / n_chars
 
-    # Sentence fragments: sentences with 1-3 words (human casual)
+    # Sentence fragments: sentences with 1-3 words (human casual writing)
     features["fragment_ratio"] = (
         sum(1 for sl in sentence_lengths if sl <= 3) / len(sentence_lengths)
         if sentence_lengths else 0.0
     )
 
-    # Run-on sentences: sentences with 40+ words (human stream-of-consciousness)
+    # Run-on sentences: 40+ words (more common in human academic papers)
     features["runon_ratio"] = (
         sum(1 for sl in sentence_lengths if sl >= 40) / len(sentence_lengths)
         if sentence_lengths else 0.0
@@ -116,11 +108,67 @@ def extract_features(raw_text, clean_text):
         if raw_word_tokens else 0.0
     )
 
-    # Question density (human writing asks more questions)
+    # Question density (rare in scientific text but discriminates Human from AI)
     features["question_density"] = raw_text.count("?") / len(sentences) if sentences else 0.0
 
-    # Exclamation density
-    features["exclamation_density"] = raw_text.count("!") / len(sentences) if sentences else 0.0
+    # --- AI-specific linguistic signals (NEW) ---
+    
+    # Bigram uniqueness (AI tends to repeat key phrases less)
+    if len(words) > 1:
+        bigrams = list(zip(words[:-1], words[1:]))
+        unique_bigrams = len(set(bigrams))
+        features["bigram_uniqueness"] = unique_bigrams / len(bigrams)
+    else:
+        features["bigram_uniqueness"] = 0.0
+
+    # Adverb overuse (AI uses more intensifiers: "very", "quite", "extremely", etc.)
+    adverbs = {"very", "quite", "extremely", "remarkably", "clearly", "obviously",
+               "certainly", "absolutely", "definitely", "highly", "particularly",
+               "significantly", "substantially", "considerably"}
+    features["adverb_ratio"] = (
+        sum(1 for w in raw_word_tokens if w in adverbs) / len(raw_word_tokens)
+        if raw_word_tokens else 0.0
+    )
+
+    # Modal verbs (AI uses more "would", "could", "should" — hedging language)
+    modals = {"would", "could", "should", "might", "may", "must", "can", "will", "shall"}
+    features["modal_ratio"] = (
+        sum(1 for w in raw_word_tokens if w in modals) / len(raw_word_tokens)
+        if raw_word_tokens else 0.0
+    )
+
+    # Transition/discourse words — true connectors only (was polluted with stopwords)
+    discourse_connectors = {"however", "therefore", "furthermore", "moreover", "consequently",
+                            "conversely", "nonetheless", "nevertheless", "alternatively",
+                            "notwithstanding", "thus", "hence", "accordingly", "subsequently"}
+    features["transition_ratio"] = (
+        sum(1 for w in raw_word_tokens if w in discourse_connectors) / len(raw_word_tokens)
+        if raw_word_tokens else 0.0
+    )
+
+    # Passive voice ratio (AI uses more passive constructions)
+    # Pattern: "be" verbs + past participle (simplified detection)
+    be_verbs = {"is", "was", "are", "were", "be", "been", "being"}
+    passive_constructions = sum(1 for w in raw_word_tokens if w in be_verbs)
+    features["passive_voice_ratio"] = passive_constructions / len(sentences) if sentences else 0.0
+
+    # --- Domain-specific signals (scientific text) ---
+
+    # Citation pattern: human scientific papers often cite sources inline
+    # Matches patterns like "(Smith, 2005)", "(et al.)", "et al,"
+    citation_patterns = len(re.findall(r"\b\w+,\s*\d{4}\b|\bet\s+al\b", raw_text))
+    features["citation_density"] = citation_patterns / len(sentences) if sentences else 0.0
+
+    # Hedging language: scientific caution — differs between human papers and AI summaries
+    # Human papers often hedge more; AI overviews can be more declarative
+    hedging_words = {"suggest", "suggests", "suggested", "appears", "appear", "indicates",
+                     "indicate", "hypothesize", "hypothesizes", "propose", "proposes",
+                     "believed", "thought", "considered", "estimated", "likely", "unlikely",
+                     "possibly", "perhaps", "presumably", "seemingly", "arguably"}
+    features["hedging_ratio"] = (
+        sum(1 for w in raw_word_tokens if w in hedging_words) / len(raw_word_tokens)
+        if raw_word_tokens else 0.0
+    )
 
     return features
 

@@ -8,19 +8,18 @@ from torch.utils.data import Dataset
 
 class TextDataset(Dataset):
 
-    def __init__(self,X,y):
-        self.X = X
+    def __init__(self, X, y):
+        # Accept either dense numpy array or sparse matrix
+        if hasattr(X, "toarray"):
+            X = X.toarray()
+        self.X = torch.tensor(X, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.long)
 
     def __len__(self):
         return self.X.shape[0]
 
     def __getitem__(self, idx):
-
-        x = torch.tensor(self.X[idx].toarray(), dtype=torch.float32).squeeze()
-        y = self.y[idx]
-
-        return x, y
+        return self.X[idx], self.y[idx]
     
 
 def build_vectorizer():
