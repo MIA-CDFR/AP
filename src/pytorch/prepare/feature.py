@@ -2,6 +2,8 @@ import re
 import numpy as np
 from collections import Counter
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 
 stop_words = {
     "a", "an", "the", "and", "or", "but", "if", "while",
@@ -9,18 +11,32 @@ stop_words = {
 }
 
 
-def remove_stop_words(text):
-    return " ".join([word for word in text.split() if word.lower() not in stop_words])
+def preprocess_text(text):
+    """Aggressive cleaning used for TF-IDF vectorizer."""
+    text = str(text).lower()
+    text = re.sub(r"<.*?>", "", text)
+    text = re.sub(r"\d+", "", text)
+    text = re.sub(r"[^\w\s]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def preprocess_text_clean(text):
+    """Light cleaning for handcrafted feature extraction (keeps punctuation info)."""
+    text = str(text).lower()
+    text = "".join(char for char in text if char.isalnum() or char.isspace())
+    return text
 
 
 def extract_features(raw_text, clean_text):
+    """Extract handcrafted features from raw and lightly-cleaned text."""
     words = clean_text.split()
     num_words = len(words)
     raw_lower = raw_text.lower()
 
     sentence_split = raw_text.replace("!", ".").replace("?", ".").split(".")
     sentences = [s.strip() for s in sentence_split if s.strip()]
-    sentence_lengths = [len(preprocess_text(s).split()) for s in sentences]
+    sentence_lengths = [len(preprocess_text_clean(s).split()) for s in sentences]
 
     word_counts = Counter(words)
     # Only keep punctuation marks with actual signal (! and ? are ~0 in scientific text)
@@ -44,11 +60,11 @@ def extract_features(raw_text, clean_text):
 
     # --- Punctuation ratios ---
     for p, count in punctuation.items():
-        key = f"punct_{p}_ratio".replace("?", "q").replace("!", "e").replace(".", "dot")
+        key = f"punct_{p}_ratio".replace(".", "dot")
         features[key] = count / n_chars
 
     # --- Char-class ratios ---
-    original_tokens = [token for token in preprocess_text(raw_lower).split() if token]
+    original_tokens = [token for token in preprocess_text_clean(raw_lower).split() if token]
     features["stopword_ratio"] = (
         sum(1 for token in original_tokens if token in stop_words) / len(original_tokens)
         if original_tokens else 0.0
@@ -57,17 +73,15 @@ def extract_features(raw_text, clean_text):
     features["digit_ratio"] = sum(1 for ch in raw_text if ch.isdigit()) / n_chars
     features["whitespace_ratio"] = sum(1 for ch in raw_text if ch.isspace()) / n_chars
 
-    # --- Punctuation problems / informal style (human signals) ---
-    # Contractions: don't, I'm, can't, etc.
-    import re
+    # --- Informal / style signals ---
     n_contractions = len(re.findall(r"\b\w+'\w+\b", raw_text))
     features["contraction_ratio"] = n_contractions / num_words if num_words > 0 else 0.0
 
-    # All-caps words: acronyms like DNA, PFAS, H5N1 — higher in human scientific papers
+    # All-caps words: acronyms like DNA, PFAS — higher in human scientific papers
     all_caps_words = [w for w in raw_text.split() if len(w) > 1 and w.isupper()]
     features["allcaps_word_ratio"] = len(all_caps_words) / num_words if num_words > 0 else 0.0
 
-    # Missing space after punctuation (e.g. "e.g." or inline formula references)
+    # Missing space after punctuation (e.g. inline formula references)
     features["missing_space_after_punct"] = len(re.findall(r"[.!?,;:][A-Za-z]", raw_text)) / n_chars
 
     # Sentence fragments: sentences with 1-3 words (human casual writing)
@@ -82,17 +96,18 @@ def extract_features(raw_text, clean_text):
         if sentence_lengths else 0.0
     )
 
+    raw_word_tokens = re.findall(r"\b\w+\b", raw_lower)
+
     # Informal filler words (human verbal habit)
     filler_words = {"tbh", "lol", "omg", "idk", "imo", "btw", "ngl", "smh", "fyi",
                     "like", "just", "really", "basically", "literally", "actually",
                     "kinda", "sorta", "yeah", "yep", "nope", "ok", "okay"}
-    raw_word_tokens = re.findall(r"\b\w+\b", raw_lower)
     features["filler_word_ratio"] = (
         sum(1 for w in raw_word_tokens if w in filler_words) / len(raw_word_tokens)
         if raw_word_tokens else 0.0
     )
 
-    # AI formal connector words (AI signal — lower = more human)
+    # AI formal connector words
     ai_connectors = {"furthermore", "moreover", "additionally", "consequently", "nevertheless",
                      "therefore", "thus", "hence", "notwithstanding", "whereby",
                      "subsequently", "henceforth", "aforementioned"}
@@ -111,17 +126,16 @@ def extract_features(raw_text, clean_text):
     # Question density (rare in scientific text but discriminates Human from AI)
     features["question_density"] = raw_text.count("?") / len(sentences) if sentences else 0.0
 
-    # --- AI-specific linguistic signals (NEW) ---
-    
-    # Bigram uniqueness (AI tends to repeat key phrases less)
+    # --- AI-specific linguistic signals ---
+
+    # Bigram uniqueness (AI tends to repeat key concepts in a more structured way)
     if len(words) > 1:
         bigrams = list(zip(words[:-1], words[1:]))
-        unique_bigrams = len(set(bigrams))
-        features["bigram_uniqueness"] = unique_bigrams / len(bigrams)
+        features["bigram_uniqueness"] = len(set(bigrams)) / len(bigrams)
     else:
         features["bigram_uniqueness"] = 0.0
 
-    # Adverb overuse (AI uses more intensifiers: "very", "quite", "extremely", etc.)
+    # Adverb overuse (AI overuses intensifiers)
     adverbs = {"very", "quite", "extremely", "remarkably", "clearly", "obviously",
                "certainly", "absolutely", "definitely", "highly", "particularly",
                "significantly", "substantially", "considerably"}
@@ -130,14 +144,14 @@ def extract_features(raw_text, clean_text):
         if raw_word_tokens else 0.0
     )
 
-    # Modal verbs (AI uses more "would", "could", "should" — hedging language)
+    # Modal verbs (AI hedging language)
     modals = {"would", "could", "should", "might", "may", "must", "can", "will", "shall"}
     features["modal_ratio"] = (
         sum(1 for w in raw_word_tokens if w in modals) / len(raw_word_tokens)
         if raw_word_tokens else 0.0
     )
 
-    # Transition/discourse words — true connectors only (was polluted with stopwords)
+    # Discourse connectors (true connectors only, no stopword contamination)
     discourse_connectors = {"however", "therefore", "furthermore", "moreover", "consequently",
                             "conversely", "nonetheless", "nevertheless", "alternatively",
                             "notwithstanding", "thus", "hence", "accordingly", "subsequently"}
@@ -147,20 +161,17 @@ def extract_features(raw_text, clean_text):
     )
 
     # Passive voice ratio (AI uses more passive constructions)
-    # Pattern: "be" verbs + past participle (simplified detection)
     be_verbs = {"is", "was", "are", "were", "be", "been", "being"}
     passive_constructions = sum(1 for w in raw_word_tokens if w in be_verbs)
     features["passive_voice_ratio"] = passive_constructions / len(sentences) if sentences else 0.0
 
     # --- Domain-specific signals (scientific text) ---
 
-    # Citation pattern: human scientific papers often cite sources inline
-    # Matches patterns like "(Smith, 2005)", "(et al.)", "et al,"
+    # Citation pattern: human scientific papers cite sources inline
     citation_patterns = len(re.findall(r"\b\w+,\s*\d{4}\b|\bet\s+al\b", raw_text))
     features["citation_density"] = citation_patterns / len(sentences) if sentences else 0.0
 
-    # Hedging language: scientific caution — differs between human papers and AI summaries
-    # Human papers often hedge more; AI overviews can be more declarative
+    # Hedging language: differs between human papers and AI summaries
     hedging_words = {"suggest", "suggests", "suggested", "appears", "appear", "indicates",
                      "indicate", "hypothesize", "hypothesizes", "propose", "proposes",
                      "believed", "thought", "considered", "estimated", "likely", "unlikely",
@@ -173,16 +184,10 @@ def extract_features(raw_text, clean_text):
     return features
 
 
-def preprocess_text(text):
-    text = text.lower()
-    text = "".join(char for char in text if char.isalnum() or char.isspace())
-    return text
-
-
 def build_handcrafted_matrix(raw_texts, clean_texts):
-    feature_dicts = [extract_features(raw_text, clean_text) for raw_text, clean_text in zip(raw_texts, clean_texts)]
+    feature_dicts = [extract_features(r, c) for r, c in zip(raw_texts, clean_texts)]
     feature_names = sorted(feature_dicts[0].keys())
-    matrix = np.array([[feat[name] for name in feature_names] for feat in feature_dicts], dtype=float)
+    matrix = np.array([[fd[name] for name in feature_names] for fd in feature_dicts], dtype=float)
     return matrix, feature_names
 
 
@@ -190,20 +195,21 @@ def standardize_train_test(train_matrix, test_matrix):
     mean = train_matrix.mean(axis=0, keepdims=True)
     std = train_matrix.std(axis=0, keepdims=True)
     std[std == 0] = 1
-    train_scaled = (train_matrix - mean) / std
-    test_scaled = (test_matrix - mean) / std
-    return train_scaled, test_scaled, mean, std
+    return (train_matrix - mean) / std, (test_matrix - mean) / std, mean, std
 
 
-def build_text_vector(text, tfidf_word, tfidf_char, hand_mean, hand_std, hand_feature_names):
-    raw_text = str(text)
-    clean_text = preprocess_text(raw_text)
+def build_vectorizer():
+    return TfidfVectorizer(
+        max_features=12000,
+        ngram_range=(1, 2),
+        min_df=5,
+        stop_words="english"
+    )
 
-    x_word = tfidf_word.transform([clean_text])
-    x_char = tfidf_char.transform([clean_text])
 
-    feat = extract_features(raw_text, clean_text)
-    x_hand = np.array([[feat[name] for name in hand_feature_names]], dtype=float)
-    x_hand = (x_hand - hand_mean) / hand_std
+def encode_labels(labels):
+    unique = sorted(list(set(labels)))
+    mapping = {label: i for i, label in enumerate(unique)}
+    encoded = np.array([mapping[l] for l in labels])
+    return encoded, mapping
 
-    return np.hstack([x_word, x_char, x_hand])

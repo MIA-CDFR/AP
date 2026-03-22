@@ -35,7 +35,7 @@ def get_otb_dataset(n_lines: int = 10000) -> pd.DataFrame:
     mapping_classes = {
         "meta-llama": "Meta",
         "qwen": "OpenAI",
-        "mistralai": "Mistral",
+        # "mistralai": "Mistral",
         "google": "Google",
         "anthropic": "Anthropic",
     }
@@ -87,6 +87,22 @@ def get_datasets() -> pd.DataFrame:
     return df
 
 
+def get_revealed_dataset(csv_path: str | Path | None = None) -> pd.DataFrame:
+    project_root = Path(__file__).resolve().parents[1]
+    dataset_path = Path(csv_path) if csv_path is not None else project_root / "data" / "subm1_labels_revealed.csv"
+
+    df = pd.read_csv(dataset_path, sep=";")
+    df.columns = [c.strip() for c in df.columns]
+
+    required = {"Text", "Label"}
+    if not required.issubset(set(df.columns)):
+        raise ValueError(
+            f"CSV must contain columns {required}. Found columns: {list(df.columns)}"
+        )
+
+    return df[["Text", "Label"]].dropna().reset_index(drop=True)
+
+
 def train_test_split(X, y, test_size=0.2, random_state=42):
     """
     Maintains class proportions in train and test sets.
@@ -115,8 +131,8 @@ def train_test_split(X, y, test_size=0.2, random_state=42):
         test_indices.extend(class_indices[split_point:])
 
     # Shuffle final indices
-    train_indices = np.array(train_indices)
-    test_indices = np.array(test_indices)
+    train_indices = np.array(train_indices, dtype=int)
+    test_indices = np.array(test_indices, dtype=int)
     np.random.shuffle(train_indices)
     np.random.shuffle(test_indices)
 
@@ -139,9 +155,16 @@ class DatasetLoader:
         )
 
     @classmethod
-    def load_datasets(cls) -> "DatasetLoader":
-        df = get_datasets()
-
+    def _load_from_dataframe(
+        cls,
+        df: pd.DataFrame,
+        *,
+        test_size: float = 0.2,
+        random_state: int = 42,
+        word_max_features: int = 12000,
+        char_max_features: int = 12000,
+    ) -> "DatasetLoader":
+        df = df.copy()
         df.columns = [c.strip().capitalize() for c in df.columns]
         df = df[["Text", "Label"]]
 
@@ -154,7 +177,7 @@ class DatasetLoader:
 
         y = df["Label_num"].values
         indices = np.arange(len(df))
-        idx_train, idx_test, _, _ = train_test_split(indices, y, test_size=0.2, random_state=42)
+        idx_train, idx_test, _, _ = train_test_split(indices, y, test_size=test_size, random_state=random_state)
 
         df_train = df.iloc[idx_train].reset_index(drop=True)
         df_test = df.iloc[idx_test].reset_index(drop=True)
@@ -162,8 +185,8 @@ class DatasetLoader:
         cls.y_train = df_train["Label_num"].values
         cls.y_test = df_test["Label_num"].values
 
-        cls.tfidf_word = TFIDF(analyzer="word", ngram_range=(1, 2), max_features=5000)
-        cls.tfidf_char = TFIDF(analyzer="char", ngram_range=(3, 5), max_features=5000)
+        cls.tfidf_word = TFIDF(analyzer="word", ngram_range=(1, 2), max_features=word_max_features)
+        cls.tfidf_char = TFIDF(analyzer="char", ngram_range=(3, 5), max_features=char_max_features)
 
         X_word_train = cls.tfidf_word.fit_transform(df_train["Text_clean"].tolist())
         X_word_test = cls.tfidf_word.transform(df_test["Text_clean"].tolist())
@@ -174,9 +197,12 @@ class DatasetLoader:
         X_hand_train, cls.hand_feature_names = build_handcrafted_matrix(
             df_train["Text"].tolist(), df_train["Text_clean"].tolist()
         )
-        X_hand_test, _ = build_handcrafted_matrix(
-            df_test["Text"].tolist(), df_test["Text_clean"].tolist()
-        )
+        if len(df_test) > 0:
+            X_hand_test, _ = build_handcrafted_matrix(
+                df_test["Text"].tolist(), df_test["Text_clean"].tolist()
+            )
+        else:
+            X_hand_test = np.zeros((0, X_hand_train.shape[1]), dtype=float)
         cls.X_hand_train, cls.X_hand_test, cls.hand_mean, cls.hand_std = standardize_train_test(
             X_hand_train, X_hand_test
         )
@@ -189,7 +215,31 @@ class DatasetLoader:
         print("Handcrafted features shape:", X_hand_train.shape)
         print("Final X_train shape:", cls.X_train.shape)
         print("Final X_test shape:", cls.X_test.shape)
+        print("Class names:", cls.class_names)
         print("y_train class distribution:", np.bincount(cls.y_train) / len(cls.y_train))
         print("y_test class distribution:", np.bincount(cls.y_test) / len(cls.y_test))
 
         return cls
+
+    @classmethod
+    def load_datasets(cls) -> "DatasetLoader":
+        return cls._load_from_dataframe(get_datasets())
+
+    @classmethod
+    def load_revealed_dataset(
+        cls,
+        csv_path: str | Path | None = None,
+        *,
+        test_size: float = 0.2,
+        random_state: int = 42,
+        word_max_features: int = 4000,
+        char_max_features: int = 6000,
+    ) -> "DatasetLoader":
+        df = get_revealed_dataset(csv_path)
+        return cls._load_from_dataframe(
+            df,
+            test_size=test_size,
+            random_state=random_state,
+            word_max_features=word_max_features,
+            char_max_features=char_max_features,
+        )

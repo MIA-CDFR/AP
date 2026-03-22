@@ -10,7 +10,11 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "cwd": "${workspaceFolder}/src"
+            "cwd": "${workspaceFolder}/src",
+            "env": {
+                "PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION": "python"
+            },
+            "args": ["--eval-revealed"]
         }
     ]
 }

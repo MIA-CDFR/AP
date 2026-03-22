@@ -13,14 +13,24 @@ from dnn.layers.activation import ReLU, Softmax, Dropout
 
 
 class Model:
-    def __init__(self, n_classes: int = 6):
+    def __init__(
+        self,
+        n_classes: int = 5,
+        hidden_units: tuple[int, int] = (256, 128),
+        dropout_rates: tuple[float, float] = (0.3, 0.2),
+    ):
+        if len(hidden_units) != 2:
+            raise ValueError("hidden_units must contain exactly two layer sizes")
+        if len(dropout_rates) != 2:
+            raise ValueError("dropout_rates must contain exactly two rates")
+
         self.nn = NeuralNetwork()
-        self.nn.add_layer(DenseLayer(256))
+        self.nn.add_layer(DenseLayer(hidden_units[0]))
         self.nn.add_layer(ReLU())
-        self.nn.add_layer(Dropout(0.3))
-        self.nn.add_layer(DenseLayer(128))
+        self.nn.add_layer(Dropout(dropout_rates[0]))
+        self.nn.add_layer(DenseLayer(hidden_units[1]))
         self.nn.add_layer(ReLU())
-        self.nn.add_layer(Dropout(0.2))
+        self.nn.add_layer(Dropout(dropout_rates[1]))
         self.nn.add_layer(DenseLayer(n_classes))
         self.nn.add_layer(Softmax())
 
@@ -31,20 +41,35 @@ class Model:
         self.hand_feature_names = None
         self.class_names = None
 
-    def train(self, X_train, y_train, X_val, y_val, epochs: int = 10, batch_size: int = 32):
+    def train(
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        *,
+        epochs: int = 80,
+        batch_size: int = 16,
+        learning_rate: float = 0.005,
+        verbose_every: int = 10,
+        patience: int = 40,
+        min_delta: float = 1e-4,
+        lr_decay: float = 0.5,
+        lr_patience: int = 10,
+    ):
         history = self.nn.fit(
             X_train,
             y_train,
             epochs=epochs,
-            learning_rate=0.01,
+            learning_rate=learning_rate,
             batch_size=batch_size,
             x_val=X_val,
             y_val=y_val,
-            verbose_every=25,
-            patience=30,
-            min_delta=1e-4,
-            lr_decay=0.5,
-            lr_patience=10,
+            verbose_every=verbose_every,
+            patience=patience,
+            min_delta=min_delta,
+            lr_decay=lr_decay,
+            lr_patience=lr_patience,
         )
         print(f"Final Train Loss: {history['train_loss'][-1]:.4f}")
         print(f"Best Val Loss: {min(history['val_loss']):.4f}")
@@ -118,10 +143,10 @@ class Model:
                 print("True label distribution:", np.bincount(y_num, minlength=n_classes))
             print(f"Test Accuracy: {accuracy:.4f}")
 
-        if num_to_label is None:
-            return y, predicted_labels.tolist()
+            if num_to_label is None:
+                return y, predicted_labels.tolist()
 
-        self.print_confusion_matrix(y, [num_to_label[i] for i in predicted_labels])
+            self.print_confusion_matrix(y, [num_to_label[i] for i in predicted_labels])
 
         return [num_to_label[i] for i in predicted_labels]
 
