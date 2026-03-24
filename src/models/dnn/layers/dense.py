@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from dnn.layers.base import Layer
+from models.dnn.layers.base import Layer
 
 
 class DenseLayer(Layer):

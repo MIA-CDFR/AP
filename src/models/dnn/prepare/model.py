@@ -5,11 +5,11 @@ from collections.abc import Iterable
 import pandas as pd
 import numpy as np
 
-from dnn.prepare.dataset import DatasetLoader
-from dnn.prepare.feature import build_text_vector
-from dnn.nn import NeuralNetwork
-from dnn.layers import DenseLayer
-from dnn.layers.activation import ReLU, Softmax, Dropout
+from models.dnn.prepare.dataset import DatasetLoader
+from models.dnn.prepare.feature import build_text_vector
+from models.dnn.nn import NeuralNetwork
+from models.dnn.layers import DenseLayer
+from models.dnn.layers.activation import ReLU, Softmax, Dropout
 
 
 class Model:

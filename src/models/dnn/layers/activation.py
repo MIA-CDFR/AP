@@ -2,7 +2,8 @@ import numpy as np
 
 from typing import Callable
 
-from dnn.layers.base import Layer
+from models.dnn.layers.base import Layer
+
 
 class ActivationLayer(Layer):
 

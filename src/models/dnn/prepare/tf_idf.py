@@ -5,7 +5,7 @@ import numpy as np
 from collections import Counter
 from collections.abc import Iterable
 
-from dnn.prepare.vocab import Vocab
+from models.dnn.prepare.vocab import Vocab
 
 
 class TFIDF:

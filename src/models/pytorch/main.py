@@ -7,10 +7,10 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
-from pytorch.models.dnn import DNNClassifier
-from pytorch.prepare.model import evaluate, train_model
-from pytorch.prepare.dataset import TextDataset, get_datasets
-from pytorch.prepare.feature import (
+from models.pytorch.models.dnn import DNNClassifier
+from models.pytorch.prepare.model import evaluate, train_model
+from models.pytorch.prepare.dataset import TextDataset, get_datasets
+from models.pytorch.prepare.feature import (
     preprocess_text, preprocess_text_clean,
     build_vectorizer, encode_labels,
     build_handcrafted_matrix, standardize_train_test,

@@ -1,8 +1,8 @@
 import argparse
 from pathlib import Path
 
-from dnn.prepare.dataset import DatasetLoader
-from dnn.prepare.model import Model, LinearRegressionModel
+from models.dnn.prepare.dataset import DatasetLoader
+from models.dnn.prepare.model import Model, LinearRegressionModel
 
 
 def parse_args() -> argparse.Namespace:

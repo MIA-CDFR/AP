@@ -1,6 +1,6 @@
 import numpy as np
 
-from dnn.layers import DenseLayer, Layer
+from models.dnn.layers import DenseLayer, Layer
 
 
 class NeuralNetwork:

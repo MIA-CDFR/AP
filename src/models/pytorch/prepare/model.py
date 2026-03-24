@@ -8,12 +8,12 @@ from torch.utils.tensorboard import SummaryWriter
 
 from sklearn.metrics import confusion_matrix
 
-from pytorch.models.dnn import DNNClassifier
-from pytorch.models.lstm import LSTMClassifier
-from pytorch.models.logistic import LogisticRegression
-from pytorch.models.linear import LinearClassifier
-from pytorch.models.gru import GRUClassifier
-from pytorch.prepare.feature import (
+from models.pytorch.models.dnn import DNNClassifier
+from models.pytorch.models.lstm import LSTMClassifier
+from models.pytorch.models.logistic import LogisticRegression
+from models.pytorch.models.linear import LinearClassifier
+from models.pytorch.models.gru import GRUClassifier
+from models.pytorch.prepare.feature import (
     preprocess_text,
     preprocess_text_clean,
     build_handcrafted_matrix,
