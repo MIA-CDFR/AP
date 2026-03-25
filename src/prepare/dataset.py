@@ -102,9 +102,9 @@ def get_datasets() -> pd.DataFrame:
     df_otb = get_otb_dataset()
     df_atdp = get_atdp_dataset()
     df_ap = get_ap_dataset()
-    # df_openai = get_openai_dataset()
+    df_openai = get_openai_dataset()
     df_subm1 = get_subm1_dataset()
 
-    df = pd.concat([df_prof, df_otb, df_atdp, df_ap, df_subm1], ignore_index=True)
+    df = pd.concat([df_prof, df_otb, df_atdp, df_ap, df_openai, df_subm1], ignore_index=True)
 
     return df
