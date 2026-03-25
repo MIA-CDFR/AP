@@ -7,9 +7,10 @@ from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
 
+from prepare.dataset import get_datasets
 from models.pytorch.models.dnn import DNNClassifier
 from models.pytorch.prepare.model import evaluate, train_model
-from models.pytorch.prepare.dataset import TextDataset, get_datasets
+from models.pytorch.prepare.dataset import TextDataset
 from models.pytorch.prepare.feature import (
     preprocess_text, preprocess_text_clean,
     build_vectorizer, encode_labels,
@@ -70,7 +71,7 @@ def main():
 
     from pathlib import Path
 
-    path = Path(__file__).resolve().parent
+    path = Path(__file__).resolve().parents[3] / "models"
 
     torch.save({
         "model_type": "dnn",
@@ -82,7 +83,7 @@ def main():
         "hand_feature_names": feature_names,
         "hand_mean": hand_mean,
         "hand_std": hand_std,
-    }, path / "model.pth")
+    }, path / "pytorch-dnn-model.pth")
 
     print("Model saved.")
 

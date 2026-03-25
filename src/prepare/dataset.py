@@ -1,4 +1,5 @@
 import pandas as pd
+import requests
 
 from datasets import load_dataset
 from pathlib import Path
@@ -27,6 +28,7 @@ def get_subm1_dataset(n_lines: int = 10000) -> pd.DataFrame:
         raise ValueError(
             f"CSV must contain columns {required}. Found columns: {list(df.columns)}"
         )
+    n_lines = min(n_lines, len(df))
 
     return df[["Text", "Label"]].dropna().sample(n_lines, random_state=42).reset_index(drop=True)
 
@@ -41,7 +43,7 @@ def get_otb_dataset(n_lines: int = 10000) -> pd.DataFrame:
 
     mapping_classes = {
         "meta-llama": "Meta",
-        "qwen": "OpenAI",
+        # "qwen": "OpenAI",
         "google": "Google",
         "anthropic": "Anthropic",
     }
@@ -54,6 +56,20 @@ def get_otb_dataset(n_lines: int = 10000) -> pd.DataFrame:
 
     return df[["id", "Text", "Label"]].sample(n_lines, random_state=42).reset_index(drop=True)
 
+
+def get_openai_dataset(n_lines: int = 10000) -> pd.DataFrame:
+    dataset = load_dataset("Dahoas/instruct-synthetic-prompt-responses")
+
+    df = dataset["train"].to_pandas()
+
+    df["id"] = df.index.astype(str)
+    df["Text"] = df["response"]
+    df["Label"] = df["response"].apply(lambda x: "OpenAI" if x.strip() != "" else "Others")
+    df = df[df["Label"] != "Others"]
+
+    n_lines = min(n_lines, len(df))
+
+    return df[["id", "Text", "Label"]].sample(n_lines, random_state=42).reset_index(drop=True)
 
 def get_atdp_dataset(n_lines: int = 10000) -> pd.DataFrame:
     dataset = load_dataset("artem9k/ai-text-detection-pile")
@@ -86,7 +102,9 @@ def get_datasets() -> pd.DataFrame:
     df_otb = get_otb_dataset()
     df_atdp = get_atdp_dataset()
     df_ap = get_ap_dataset()
+    df_openai = get_openai_dataset()
+    df_subm1 = get_subm1_dataset()
 
-    df = pd.concat([df_prof, df_otb, df_atdp, df_ap], ignore_index=True)
+    df = pd.concat([df_prof, df_otb, df_atdp, df_ap, df_openai, df_subm1], ignore_index=True)
 
     return df
