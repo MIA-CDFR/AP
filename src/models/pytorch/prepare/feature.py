@@ -203,7 +203,7 @@ def build_vectorizer():
         max_features=12000,
         ngram_range=(1, 2),
         min_df=5,
-        stop_words="english"
+        # stop_words="english"
     )
 
 

@@ -2,13 +2,15 @@ import random
 import numpy as np
 import pandas as pd
 import math
+from collections import Counter
 
 import matplotlib.pyplot as plt
 import torch
 
-from sklearn.utils import compute_class_weight
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, classification_report, f1_score
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 from torch import nn
 from torch import optim
 from torch.utils.data import DataLoader, random_split, WeightedRandomSampler
@@ -44,10 +46,88 @@ WEIGHT_DECAY = 1e-5
 WARMUP_RATIO = 0.1
 GRADIENT_ACCUMULATION_STEPS = 1
 USE_AMP = device.type == "cuda"
+MAX_CHAR_LEN = 6000
 
 def normalize_text(text: str) -> str:
     text = str(text).replace("\u00a0", " ").replace("\ufeff", " ")
     return " ".join(text.split()).strip()
+
+
+def print_data_profile(df: pd.DataFrame, title: str = "Profile"):
+    print(f"\n=== {title} ===")
+    print(f"Samples: {len(df)}")
+    print("Label counts:")
+    print(df["Label"].value_counts().to_string())
+
+    char_len = df["Text"].astype(str).str.len()
+    print(
+        "Char length stats: "
+        f"median={int(char_len.median())}, "
+        f"p90={int(char_len.quantile(0.90))}, "
+        f"p95={int(char_len.quantile(0.95))}, "
+        f"p99={int(char_len.quantile(0.99))}, "
+        f"max={int(char_len.max())}"
+    )
+
+
+def evaluate_on_baseline_csv(
+    model,
+    label_map,
+    vectorizer,
+    char_vectorizer,
+    seq_len,
+    mean,
+    std,
+    hand_mean,
+    hand_std,
+    criterion,
+):
+    if not BASELINE_CSV_PATH.exists():
+        print(f"Baseline CSV not found at: {BASELINE_CSV_PATH}")
+        return
+
+    baseline_df = pd.read_csv(BASELINE_CSV_PATH, sep=";")
+    baseline_df.columns = [c.strip() for c in baseline_df.columns]
+    baseline_df = baseline_df.dropna(subset=["Text", "Label"]).copy()
+    baseline_df = baseline_df[baseline_df["Label"].isin(set(label_map.keys()))]
+    baseline_df["Text"] = baseline_df["Text"].astype(str).map(normalize_text)
+    baseline_df = baseline_df[(baseline_df["Text"].str.len() > 20) & (baseline_df["Text"].str.len() <= MAX_CHAR_LEN)]
+
+    if baseline_df.empty:
+        print("Baseline CSV has no labels compatible with current label_map.")
+        return
+
+    raw_base = baseline_df["Text"].tolist()
+    clean_base = [preprocess_text_clean(t) for t in raw_base]
+    baseline_df["Text_tfidf"] = baseline_df["Text"].apply(preprocess_text)
+    baseline_df["Text_char"] = baseline_df["Text"].astype(str).str.lower()
+
+    X_tfidf_base = vectorizer.transform(baseline_df["Text_tfidf"])
+    X_tfidf_char_base = char_vectorizer.transform(baseline_df["Text_char"])
+    X_hand_base, _ = build_handcrafted_matrix(raw_base, clean_base)
+    X_hand_base = (X_hand_base - hand_mean) / (hand_std + 1e-8)
+
+    X_base = np.hstack([X_tfidf_base.toarray(), X_tfidf_char_base.toarray(), X_hand_base])
+    X_base = (X_base - mean) / std
+
+    flat_dim = X_base.shape[1]
+    pad_size = (seq_len - (flat_dim % seq_len)) % seq_len
+    if pad_size > 0:
+        X_base = np.hstack([X_base, np.zeros((X_base.shape[0], pad_size))])
+
+    embed_dim = X_base.shape[1] // seq_len
+    X_base = X_base.reshape(-1, seq_len, embed_dim)
+
+    y_base = np.array([label_map[l] for l in baseline_df["Label"]], dtype=np.int64)
+    base_dataset = TextDataset(X_base, y_base)
+    base_loader = DataLoader(base_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
+
+    base_loss, base_acc, base_macro_f1, base_weighted_f1, _, _ = evaluate_loss_accuracy(model, base_loader, criterion)
+    print("\n=== Baseline-only evaluation (subm1_labels_revealed.csv) ===")
+    print(f"Baseline loss: {base_loss:.4f}")
+    print(f"Baseline acc: {base_acc:.4f}")
+    print(f"Baseline F1 macro: {base_macro_f1:.4f}")
+    print(f"Baseline F1 weighted: {base_weighted_f1:.4f}")
 
 def evaluate_loss_accuracy(model, loader, criterion):
     model.eval()
@@ -142,8 +222,10 @@ def main():
     df = df.dropna(subset=["Text", "Label"]).copy()
     df["Text"] = df["Text"].astype(str).map(normalize_text)
     df = df[df["Text"].str.len() > 20]
+    df = df[df["Text"].str.len() <= MAX_CHAR_LEN]
     df = df.drop_duplicates(subset=["Text", "Label"]).reset_index(drop=True)
     print(f"After cleaning: {len(df)} samples")
+    print_data_profile(df, title="Training corpus profile")
 
     df_train, df_test, _, _ = train_test_split(
         df,
@@ -170,6 +252,18 @@ def main():
     X_tfidf_train = vectorizer.fit_transform(df_train["Text_tfidf"])
     X_tfidf_test = vectorizer.transform(df_test["Text_tfidf"])
 
+    # --- Char TF-IDF features (strong style signal) ---
+    char_vectorizer = TfidfVectorizer(
+        analyzer="char_wb",
+        ngram_range=(3, 5),
+        min_df=3,
+        max_features=20000,
+    )
+    df_train["Text_char"] = df_train["Text"].astype(str).str.lower()
+    df_test["Text_char"] = df_test["Text"].astype(str).str.lower()
+    X_tfidf_char_train = char_vectorizer.fit_transform(df_train["Text_char"])
+    X_tfidf_char_test = char_vectorizer.transform(df_test["Text_char"])
+
     # --- Handcrafted features ---
     X_hand_train, feature_names = build_handcrafted_matrix(raw_train, clean_train)
     X_hand_test, _ = build_handcrafted_matrix(raw_test, clean_test)
@@ -177,8 +271,8 @@ def main():
 
     #############################################################################################################################
 
-    X_train = np.hstack([X_tfidf_train.toarray(), X_hand_train])
-    X_test = np.hstack([X_tfidf_test.toarray(), X_hand_test])
+    X_train = np.hstack([X_tfidf_train.toarray(), X_tfidf_char_train.toarray(), X_hand_train])
+    X_test = np.hstack([X_tfidf_test.toarray(), X_tfidf_char_test.toarray(), X_hand_test])
 
     # --- NORMALIZAÇÃO ---
     mean = X_train.mean(axis=0)
@@ -206,7 +300,8 @@ def main():
     #############################################################################################################################
     
     print(f"TF-IDF features:      {X_tfidf_train.shape[1]}")
-    print(f"Handcrafted features: {X_hand_train.shape[1]} {feature_names}")
+    print(f"Char TF-IDF features: {X_tfidf_char_train.shape[1]}")
+    # print(f"Handcrafted features: {X_hand_train.shape[1]} {feature_names}")
     print(f"Sequence length: {X_train.shape[1]}, Embed dim: {X_train.shape[2]}")
 
     y_train, label_map = encode_labels(df_train["Label"])
@@ -230,16 +325,66 @@ def main():
     # Balanced sampling for better class handling
     class_counts = np.bincount(y_train, minlength=n_classes)
     inv_freq = 1.0 / np.clip(class_counts, 1, None)
-    sample_weights = inv_freq[y_train]
+    train_indices = np.array(train_dataset.indices)
+    train_subset_labels = y_train[train_indices]
+
+    # Domain-aware weighting (adversarial validation): downweight training samples too far from baseline distribution.
+    adv_train = pd.DataFrame({"Text": df_train["Text"].astype(str), "src": 1})
+    adv_base = pd.read_csv(BASELINE_CSV_PATH, sep=";")
+    adv_base.columns = [c.strip() for c in adv_base.columns]
+    adv_base = adv_base.dropna(subset=["Text"])
+    adv_base = pd.DataFrame({"Text": adv_base["Text"].astype(str), "src": 0})
+    adv_df = pd.concat([adv_train, adv_base], ignore_index=True)
+    adv_texts = adv_df["Text"].map(normalize_text).tolist()
+    adv_y = adv_df["src"].to_numpy()
+
+    adv_vectorizer = TfidfVectorizer(
+        max_features=15000,
+        ngram_range=(1, 2),
+        min_df=3,
+        stop_words="english",
+    )
+    adv_X = adv_vectorizer.fit_transform(adv_texts)
+    adv_clf = LogisticRegression(max_iter=1200, class_weight="balanced")
+    adv_clf.fit(adv_X, adv_y)
+
+    train_domain_prob = adv_clf.predict_proba(
+        adv_vectorizer.transform(df_train["Text"].map(normalize_text))
+    )[:, 1]
+    domain_weights_full = np.clip(1.2 - train_domain_prob, 0.25, 1.5)
+    domain_weights_subset = domain_weights_full[train_indices]
+
+    sample_weights = inv_freq[train_subset_labels] * domain_weights_subset
     train_sampler = WeightedRandomSampler(
         weights=torch.tensor(sample_weights, dtype=torch.double),
         num_samples=len(sample_weights),
         replacement=True
     )
 
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE)
+    num_workers = 0 if device.type == "mps" else 2
+    pin_memory = device.type == "cuda"
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=BATCH_SIZE,
+        sampler=train_sampler,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=False,
+        num_workers=num_workers,
+        pin_memory=pin_memory,
+    )
 
     input_dim = X_train.shape[2]
 
@@ -250,7 +395,11 @@ def main():
     # model = LSTMClassifier(input_dim, n_classes).to(device)
     model = TransformerClassifier(input_dim, n_classes, seq_len=seq_len_model).to(device)
 
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)  # Label smoothing for regularization
+    class_weights = (1.0 / np.clip(class_counts, 1, None)).astype(np.float32)
+    class_weights = class_weights / class_weights.mean()
+    class_weights = torch.tensor(class_weights, dtype=torch.float32, device=device)
+
+    criterion = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.05)
     
     # Grouped AdamW: different weight decay for different param groups
     no_decay = ["bias", "norm", "LayerNorm"]
@@ -421,6 +570,19 @@ def main():
     disp.plot(cmap="Blues", xticks_rotation=45)
     plt.show()
 
+    evaluate_on_baseline_csv(
+        model=model,
+        label_map=label_map,
+        vectorizer=vectorizer,
+        char_vectorizer=char_vectorizer,
+        seq_len=seq_len,
+        mean=mean,
+        std=std,
+        hand_mean=hand_mean,
+        hand_std=hand_std,
+        criterion=criterion,
+    )
+
     #############################################################################################################################
 
     # Gravar o modelo
@@ -433,12 +595,15 @@ def main():
         "model_state": model.state_dict(),
         "label_map": label_map,
         "vectorizer": vectorizer,
+        "char_vectorizer": char_vectorizer,
         "input_dim": input_dim,
         "seq_len": seq_len_model,
         "n_hand_features": X_hand_train.shape[1],
         "hand_feature_names": feature_names,
         "hand_mean": hand_mean,
         "hand_std": hand_std,
+        "global_mean": mean,
+        "global_std": std,
         "val_f1_macro": best_val_f1,
     }
     

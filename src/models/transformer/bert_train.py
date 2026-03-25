@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import pandas as pd
 import math
+from collections import Counter
 
 from contextlib import nullcontext
 from pathlib import Path
@@ -35,14 +36,15 @@ save_dir.mkdir(parents=True, exist_ok=True)
 BASELINE_CSV_PATH = Path(__file__).resolve().parents[2] / "data" / "subm1_labels_revealed.csv"
 
 MAX_LEN = 256
-BATCH_SIZE = 16
-NUM_EPOCHS = 6
-PATIENCE = 3
-LEARNING_RATE = 2e-5
+BATCH_SIZE = 12
+NUM_EPOCHS = 10
+PATIENCE = 4
+LEARNING_RATE = 1.5e-5
 WEIGHT_DECAY = 0.01
 WARMUP_RATIO = 0.1
 GRADIENT_ACCUMULATION_STEPS = 2
 USE_AMP = device.type == "cuda"
+MAX_CHAR_LEN = 6000
 
 
 class BERTDataset(Dataset):
@@ -71,6 +73,38 @@ class BERTDataset(Dataset):
 def normalize_text(text: str) -> str:
     text = str(text).replace("\u00a0", " ").replace("\ufeff", " ")
     return " ".join(text.split()).strip()
+
+
+def print_data_profile(df: pd.DataFrame, tokenizer=None, max_len: int = 256, title: str = "Profile"):
+    print(f"\n=== {title} ===")
+    print(f"Samples: {len(df)}")
+    print("Label counts:")
+    print(df["Label"].value_counts().to_string())
+
+    char_len = df["Text"].astype(str).str.len()
+    print(
+        "Char length stats: "
+        f"median={int(char_len.median())}, "
+        f"p90={int(char_len.quantile(0.90))}, "
+        f"p95={int(char_len.quantile(0.95))}, "
+        f"p99={int(char_len.quantile(0.99))}, "
+        f"max={int(char_len.max())}"
+    )
+
+    if tokenizer is not None:
+        per_class_total = Counter()
+        per_class_trunc = Counter()
+
+        for text, label in zip(df["Text"].tolist(), df["Label"].tolist()):
+            token_ids = tokenizer.encode(str(text), add_special_tokens=True, truncation=False)
+            per_class_total[label] += 1
+            if len(token_ids) > max_len:
+                per_class_trunc[label] += 1
+
+        print(f"Token truncation rate by class (max_len={max_len}):")
+        for label, total in sorted(per_class_total.items(), key=lambda x: x[0]):
+            rate = per_class_trunc[label] / max(1, total)
+            print(f"  {label}: {rate:.2%} ({per_class_trunc[label]}/{total})")
 
 
 def evaluate_bert(model, loader, criterion):
@@ -172,6 +206,7 @@ def main():
     df = df.dropna(subset=["Text", "Label"]).copy()
     df["Text"] = df["Text"].astype(str).map(normalize_text)
     df = df[df["Text"].str.len() > 20]
+    df = df[df["Text"].str.len() <= MAX_CHAR_LEN]
     df = df.drop_duplicates(subset=["Text", "Label"]).reset_index(drop=True)
 
     data = df.to_dict(orient="records")
@@ -216,6 +251,8 @@ def main():
     checkpoint = "roberta-base"
 
     tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+
+    print_data_profile(df, tokenizer=tokenizer, max_len=MAX_LEN, title="Training corpus profile")
 
     model_config = AutoConfig.from_pretrained(
         checkpoint,
@@ -268,7 +305,11 @@ def main():
         pin_memory=pin_memory,
     )
 
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.1)
+    class_weights = 1.0 / np.clip(class_counts, 1, None)
+    class_weights = class_weights / class_weights.mean()
+    class_weights = torch.tensor(class_weights, dtype=torch.float32, device=device)
+
+    criterion = nn.CrossEntropyLoss(weight=class_weights, label_smoothing=0.05)
 
     no_decay = ["bias", "LayerNorm.weight"]
     optimizer_grouped_parameters = [
@@ -394,19 +435,19 @@ def main():
             checkpoint_data = {
                 "model_state": model.state_dict(),
                 "label_map": label_map,
-                "checkpoint": checkpoint,
+                "model_name": checkpoint,
                 "val_loss": val_loss,
                 "val_macro_f1": val_macro_f1,
                 "epoch": epoch
             }
             
-            torch.save(checkpoint_data, save_dir / "transform-bert.pth")
+            torch.save(checkpoint_data, save_dir / "transformer-bert.pth")
             print(f"  -> Full-precision checkpoint saved")
             
             save_fp16_checkpoint(
                 checkpoint_data["model_state"],
                 {k: v for k, v in checkpoint_data.items() if k != "model_state"},
-                save_dir / "transform-bert-fp16.pth"
+                save_dir / "transformer-bert-fp16.pth"
             )
 
         else:
@@ -460,7 +501,7 @@ def main():
     # =====================
     # EVALUATION
     # =====================
-    checkpoint_data = torch.load(save_dir / "transform-bert.pth", map_location=device)
+    checkpoint_data = torch.load(save_dir / "transformer-bert.pth", map_location=device)
     model.load_state_dict(checkpoint_data["model_state"])
     model.eval()
 

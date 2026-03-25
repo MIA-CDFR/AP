@@ -34,9 +34,9 @@ class BertModel:
     @classmethod
     def from_checkpoint(cls, checkpoint: dict[str, Any]) -> "BertModel":
         bert_model = cls()
-        bert_model.tokenizer = AutoTokenizer.from_pretrained(checkpoint["checkpoint"])
+        bert_model.tokenizer = AutoTokenizer.from_pretrained(checkpoint["model_name"])
         bert_model.model = AutoModelForSequenceClassification.from_pretrained(
-            checkpoint["checkpoint"],
+            checkpoint["model_name"],
             num_labels=len(checkpoint["label_map"])
         ).to(torch_utils.device)
         bert_model.label_map = checkpoint["label_map"]

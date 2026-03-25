@@ -7,30 +7,23 @@ class TransformerClassifier(nn.Module):
 
         self.input_proj = nn.Linear(input_dim, d_model)
         self.pos_embedding = nn.Parameter(torch.randn(1, seq_len, d_model))
-
-        self.attention = nn.MultiheadAttention(d_model, num_heads, batch_first=True)
-        self.norm1 = nn.LayerNorm(d_model)
-
-        self.ff = nn.Sequential(
-            nn.Linear(d_model, 256),
-            nn.ReLU(),
-            nn.Linear(256, d_model)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=num_heads,
+            dim_feedforward=256,
+            dropout=0.2,
+            batch_first=True,
+            norm_first=True,
+            activation="gelu",
         )
-        self.norm2 = nn.LayerNorm(d_model)
-
+        self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=2)
+        self.dropout = nn.Dropout(0.2)
         self.classifier = nn.Linear(d_model, n_classes)
 
     def forward(self, x):
         x = self.input_proj(x)
-
-        # adicionar posição
         x = x + self.pos_embedding[:, :x.size(1), :]
-
-        attn_out, _ = self.attention(x, x, x)
-        x = self.norm1(x + attn_out)
-
-        ff_out = self.ff(x)
-        x = self.norm2(x + ff_out)
-
+        x = self.encoder(x)
         x = x.mean(dim=1)
+        x = self.dropout(x)
         return self.classifier(x)

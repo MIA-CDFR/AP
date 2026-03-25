@@ -12,6 +12,7 @@ from utils.pytorch import torch_utils
 class TransformModel:
     def __init__(self):
         self.vectorizer = None
+        self.char_vectorizer = None
         self.model = None
         self.label_map = None
         self.inverse_label_map = None
@@ -34,6 +35,7 @@ class TransformModel:
     def from_checkpoint(cls, checkpoint: dict[str, Any]) -> "TransformModel":
         transform_model = cls()
         transform_model.vectorizer = checkpoint["vectorizer"]
+        transform_model.char_vectorizer = checkpoint.get("char_vectorizer")
         transform_model.model = TransformerClassifier(
             checkpoint["input_dim"],
             len(checkpoint["label_map"]),
@@ -59,9 +61,11 @@ class TransformModel:
     def predict(self, texts, labels=None):
         texts_clean = [preprocess_text(t) for t in texts]
         clean_light = [preprocess_text_clean(t) for t in texts]
+        texts_char = [str(t).lower() for t in texts]
 
 
         X_tfidf = self.vectorizer.transform(texts_clean)
+        X_tfidf_char = self.char_vectorizer.transform(texts_char) if self.char_vectorizer is not None else None
 
         X_hand, _ = build_handcrafted_matrix(texts, clean_light)
 
@@ -70,16 +74,26 @@ class TransformModel:
 
         X_hand = (X_hand - mean) / std
 
-        X = np.hstack([X_tfidf.toarray(), X_hand])
+        if X_tfidf_char is not None:
+            X = np.hstack([X_tfidf.toarray(), X_tfidf_char.toarray(), X_hand])
+        else:
+            X = np.hstack([X_tfidf.toarray(), X_hand])
+
+        global_mean = self.checkpoint.get("global_mean")
+        global_std = self.checkpoint.get("global_std")
+        if global_mean is not None and global_std is not None:
+            X = (X - global_mean) / (global_std + 1e-8)
 
         # PSEUDO-SEQUÊNCIA (igual ao treino)
         seq_len = self.checkpoint["seq_len"]
 
-        pad_size = (seq_len - (X.shape[1] % seq_len)) % seq_len
-        if pad_size > 0:
-            X = np.hstack([X, np.zeros((X.shape[0], pad_size))])
+        expected_flat_dim = seq_len * self.checkpoint["input_dim"]
+        if X.shape[1] < expected_flat_dim:
+            X = np.hstack([X, np.zeros((X.shape[0], expected_flat_dim - X.shape[1]))])
+        elif X.shape[1] > expected_flat_dim:
+            X = X[:, :expected_flat_dim]
 
-        embed_dim = X.shape[1] // seq_len
+        embed_dim = self.checkpoint["input_dim"]
         X = X.reshape(-1, seq_len, embed_dim)
 
         # Tensor
