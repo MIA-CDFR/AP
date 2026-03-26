@@ -9,10 +9,10 @@ class TransformerClassifier(nn.Module):
         vocab_size: int,
         n_classes: int,
         pad_idx: int = 0,
-        seq_len: int = 64,
-        d_model: int = 128,
-        num_heads: int = 4,
-        num_layers: int = 2,
+        seq_len: int = 512,
+        d_model: int = 512,
+        num_heads: int = 16,
+        num_layers: int = 4,
         dropout: float = 0.2,
     ):
         super().__init__()
@@ -59,6 +59,11 @@ class TransformerClassifier(nn.Module):
             labels = labels.to(model_device)
 
         x = self.token_embedding(input_ids)  # [B, T, d_model]
+        if x.size(1) > self.seq_len:
+            raise ValueError(
+                f"Input sequence length ({x.size(1)}) exceeds model seq_len ({self.seq_len}). "
+                "Set tokenizer max_length <= model seq_len."
+            )
         pos_embedding = self.pos_embedding[:, :x.size(1), :].to(x.device)
         x = x + pos_embedding
 
@@ -80,7 +85,7 @@ class TransformerClassifier(nn.Module):
             if self.n_classes == 1:
                 loss = nn.MSELoss()(logits.squeeze(-1), labels.float())
             elif labels.dtype in (torch.long, torch.int64, torch.int32):
-                loss = nn.CrossEntropyLoss()(logits, labels)
+                loss = nn.CrossEntropyLoss()(logits, labels.long())
             else:
                 loss = nn.BCEWithLogitsLoss()(logits, labels.float())
 

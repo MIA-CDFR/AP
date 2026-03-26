@@ -1,7 +1,7 @@
-
+import copy
 import numpy as np
 
-from models.dnn.layers.base import Layer
+from models.dnn.classifiers.layers.base import Layer
 
 
 class DenseLayer(Layer):
@@ -20,6 +20,9 @@ class DenseLayer(Layer):
         # initialize biases to 0
         self.biases = np.zeros((1, self.n_units), dtype=np.float32)
         return self
+
+    def parameters(self):
+        return self.weights, self.biases
 
     def forward_propagation(self, input_data):
         self.input = input_data
@@ -40,5 +43,8 @@ class DenseLayer(Layer):
     def output_shape(self):
          return (self.n_units,)
 
-    def parameters(self):
-        return self.weights, self.biases
+    def set_biases(self, new_biases):
+        self.biases = new_biases
+        
+    def set_weights(self, new_wmatrix):
+        self.weights = new_wmatrix

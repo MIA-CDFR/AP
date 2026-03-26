@@ -211,11 +211,13 @@ dependencies = [
     { name = "numpy" },
     { name = "openai" },
     { name = "pandas" },
+    { name = "protobuf" },
     { name = "pypickle" },
     { name = "scikit-learn" },
     { name = "seaborn" },
     { name = "tensorboard" },
     { name = "tensorboard-pytorch" },
+    { name = "tensorboardx" },
     { name = "torch" },
     { name = "transformers", extra = ["torch"] },
 ]
@@ -231,11 +233,13 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.4.3" },
     { name = "openai", specifier = ">=2.29.0" },
     { name = "pandas", specifier = ">=3.0.1" },
+    { name = "protobuf", specifier = "==5.29.6" },
     { name = "pypickle", specifier = ">=2.0.1" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "tensorboard", specifier = ">=2.20.0" },
     { name = "tensorboard-pytorch", specifier = ">=0.7.1" },
+    { name = "tensorboardx", specifier = ">=2.6.4" },
     { name = "torch", specifier = ">=2.10.0" },
     { name = "transformers", extras = ["torch"], specifier = ">=5.3.0" },
 ]
@@ -2771,6 +2775,20 @@ dependencies = [
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6e/d6/b8540153f69a8720b2f032fe8c7504ee66c8c0bce9103c272bd67c8e8c77/tensorboard_pytorch-0.7.1-py2.py3-none-any.whl", hash = "sha256:4236d34eae1d19058d45ea7994c26b8e90d9c27765d0df569f67111fad7bf2fd", size = 72162, upload-time = "2017-08-24T13:11:49.334Z" },
+]
+
+[[package]]
+name = "tensorboardx"
+version = "2.6.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "packaging" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2b/c5/d4cc6e293fb837aaf9f76dd7745476aeba8ef7ef5146c3b3f9ee375fe7a5/tensorboardx-2.6.4.tar.gz", hash = "sha256:b163ccb7798b31100b9f5fa4d6bc22dad362d7065c2f24b51e50731adde86828", size = 4769801, upload-time = "2025-06-10T22:37:07.419Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e0/1d/b5d63f1a6b824282b57f7b581810d20b7a28ca951f2d5b59f1eb0782c12b/tensorboardx-2.6.4-py3-none-any.whl", hash = "sha256:5970cf3a1f0a6a6e8b180ccf46f3fe832b8a25a70b86e5a237048a7c0beb18e2", size = 87201, upload-time = "2025-06-10T22:37:05.44Z" },
 ]
 
 [[package]]

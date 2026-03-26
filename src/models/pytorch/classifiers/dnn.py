@@ -2,7 +2,7 @@ from torch import nn
 
 
 class DNNClassifier(nn.Module):
-    def __init__(self,input_dim,n_classes):
+    def __init__(self, input_dim, n_classes):
         super().__init__()
         self.net = nn.Sequential(
             nn.Linear(input_dim, 256),
@@ -13,6 +13,7 @@ class DNNClassifier(nn.Module):
             nn.Dropout(0.2),
             nn.Linear(128, n_classes)
         )
+        
 
     def forward(self, x):
         return self.net(x)

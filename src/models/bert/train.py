@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 from prepare.dataset import get_datasets
 from models.bert.model import BertModel
 from utils.pytorch import torch_utils
-from utils.train import compute_metrics
+from utils.train import compute_metrics_logits
 from utils.model import main_folder
 
 
@@ -41,12 +41,12 @@ class BertTrainer:
 
         y_labels = [label_map[label] for label in y_labels]
 
+        X_train, X_eval, y_train, y_eval = train_test_split(X_texts, y_labels, test_size=0.2, random_state=42, stratify=y_labels)
+
         model = BertModel.from_pretrained(
             MODEL_NAME,
             label_map=label_map
         )
-
-        X_train, X_eval, y_train, y_eval = train_test_split(X_texts, y_labels, test_size=0.2, random_state=42, stratify=y_labels)
 
         tokenized_train = model.tokenizer(X_train, truncation=True, padding=True, max_length=max_length, return_tensors="pt")
         tokenized_eval = model.tokenizer(X_eval, truncation=True, padding=True, max_length=max_length, return_tensors="pt")
@@ -55,7 +55,7 @@ class BertTrainer:
         eval_dataset = TextClassificationDataset(tokenized_eval, y_eval)
 
         training_args = TrainingArguments(
-            output_dir='./results',
+            output_dir=main_folder / "results",
             num_train_epochs=epochs,
             per_device_train_batch_size=batch_size,
             per_device_eval_batch_size=batch_size,
@@ -78,7 +78,7 @@ class BertTrainer:
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            compute_metrics=compute_metrics,
+            compute_metrics=compute_metrics_logits,
         )
 
         trainer.train()
@@ -94,6 +94,8 @@ class BertTrainer:
             },
             main_folder / "bert.pt",
         )
+
+        print("Model saved to", main_folder / "bert.pt")
 
 if __name__ == "__main__":
     BertTrainer.train()
