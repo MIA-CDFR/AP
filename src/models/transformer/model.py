@@ -1,10 +1,10 @@
 import torch
 
 from typing import Any
+from transformers import AutoTokenizer
 
 from models.transformer.classifier.transformer import TransformerClassifier
 
-from utils.dataset import encode_text
 from utils.pytorch import torch_utils
 
 
@@ -20,12 +20,13 @@ class TransformModel:
     def create(
             cls,
             label_map: dict[str, Any],
+            tokenizer_name: str,
             vocab_size: int,
             pad_idx: int = 0,
-            seq_len: int = 64,
-            d_model: int = 128,
-            num_heads: int = 4,
-            num_layers: int = 2,
+            seq_len: int = 128,
+            d_model: int = 512,
+            num_heads: int = 16,
+            num_layers: int = 4,
             dropout: float = 0.2,
         ) -> "TransformModel":
         transform_model = cls()
@@ -41,15 +42,21 @@ class TransformModel:
         ).to(torch_utils.device)
         transform_model.label_map = label_map
         transform_model.inverse_label_map = {v: k for k, v in label_map.items()} if label_map else None
+        transform_model.checkpoint = {
+            "tokenizer_name": tokenizer_name,
+            "seq_len": seq_len,
+            "pad_token_id": pad_idx,
+            "vocab_size": vocab_size,
+        }
         return transform_model
 
     @classmethod
     def from_checkpoint(cls, checkpoint: dict[str, Any]) -> "TransformModel":
         transform_model = cls()
         transform_model.model = TransformerClassifier(
-            vocab_size=len(checkpoint["stoi"]),
+            vocab_size=checkpoint["vocab_size"],
             n_classes=len(checkpoint["label_map"]),
-            pad_idx=checkpoint["stoi"][checkpoint.get("pad_token", "<pad>")],
+            pad_idx=checkpoint.get("pad_token_id") or 0,
             seq_len=checkpoint["seq_len"],
         ).to(torch_utils.device)
         transform_model.label_map = checkpoint["label_map"]
@@ -70,16 +77,23 @@ class TransformModel:
         )
 
     def predict(self, texts, labels=None):
-        stoi = self.checkpoint["stoi"]
+        tokenizer = AutoTokenizer.from_pretrained(self.checkpoint["tokenizer_name"])
         seq_len = self.checkpoint["seq_len"]
 
         self.model.eval()
 
-        encoded = [encode_text(t, stoi, seq_len) for t in texts]
-        input_ids = torch.tensor(encoded, dtype=torch.long).to(torch_utils.device)
+        encoded = tokenizer(
+            texts,
+            padding="max_length",
+            truncation=True,
+            max_length=seq_len,
+            return_tensors="pt",
+        )
+        input_ids = encoded["input_ids"].to(torch_utils.device)
+        attention_mask = encoded["attention_mask"].to(torch_utils.device)
 
         with torch.no_grad():
-            outputs = self.model(input_ids=input_ids)
+            outputs = self.model(input_ids=input_ids, attention_mask=attention_mask)
             logits = outputs.logits if hasattr(outputs, "logits") else outputs
             preds = logits.argmax(dim=1).cpu().tolist()
 

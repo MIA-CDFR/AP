@@ -1,5 +1,4 @@
 import pandas as pd
-import requests
 
 from datasets import load_dataset
 from pathlib import Path
