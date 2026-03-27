@@ -6,15 +6,15 @@ from models.dnn.classifiers import NeuralNetwork
 from models.dnn.classifiers.layers import DenseLayer, ReLU, Dropout, Softmax
 
 from models.dnn.dnnutils.losses import LossFunction
-from utils.dataset import preprocess_text, extract_features
+from utils.dataset import preprocess_text, normalize_text, extract_features
 
 
 class NumpyModel:
     def __init__(
         self,
         n_classes: int = 5,
-        hidden_units: tuple[int, int] = (512, 256),
-        dropout_rates: tuple[float, float] = (0.3, 0.2),
+        hidden_units: tuple[int, int] = (1024, 512),
+        dropout_rates: tuple[float, float] = (0.2, 0.1),
     ):
         if len(hidden_units) != 2:
             raise ValueError("hidden_units must contain exactly two layer sizes")
@@ -42,8 +42,24 @@ class NumpyModel:
         self.loss = None
 
     @classmethod
-    def create(cls, input_dim, tfid_word, tfid_char, label_map, hand_feature_names=None, hand_mean=None, hand_std=None, loss: LossFunction = None) -> "NumpyModel":
-        model = cls(len(label_map))
+    def create(
+        cls,
+        input_dim,
+        tfid_word,
+        tfid_char,
+        label_map,
+        hand_feature_names=None,
+        hand_mean=None,
+        hand_std=None,
+        hidden_units: tuple[int, int] = (1024, 512),
+        dropout_rates: tuple[float, float] = (0.2, 0.1),
+        loss: LossFunction = None,
+    ) -> "NumpyModel":
+        model = cls(
+            len(label_map),
+            hidden_units=hidden_units,
+            dropout_rates=dropout_rates,
+        )
         if model.nn.layers and isinstance(model.nn.layers[0], DenseLayer):
             model.nn.layers[0].set_input_shape((input_dim,))
             model.nn.layers[0].initialize()
@@ -82,9 +98,11 @@ class NumpyModel:
             if self.tfidf_word is None or self.tfidf_char is None:
                 raise ValueError("TF-IDF vectorizers are not attached to this model.")
 
-            word_features = self.tfidf_word.transform(texts)
-            char_features = self.tfidf_char.transform(texts)
-            
+            cleaned_texts = [preprocess_text(text) for text in texts]
+            normalized_texts = [normalize_text(text) for text in texts]
+            word_features = self.tfidf_word.transform(cleaned_texts)
+            char_features = self.tfidf_char.transform(normalized_texts)
+
             # Extract hand-crafted features if available
             if self.hand_feature_names is not None:
                 x_hand = []
@@ -94,11 +112,11 @@ class NumpyModel:
                     feat_vec = [feat_dict.get(name, 0.0) for name in self.hand_feature_names]
                     x_hand.append(feat_vec)
                 x_hand = np.array(x_hand, dtype=np.float32)
-                
+
                 # Normalize using training statistics
                 if self.hand_mean is not None and self.hand_std is not None:
                     x_hand = (x_hand - self.hand_mean) / self.hand_std
-                
+
                 features = np.hstack([word_features, char_features, x_hand]).astype(np.float32)
             else:
                 features = np.hstack([word_features, char_features]).astype(np.float32)
@@ -112,8 +130,8 @@ class NumpyModel:
             if isinstance(y, np.ndarray):
                 labels = y.astype(np.int32, copy=False)
             elif isinstance(y, list) and (len(y) == 0 or isinstance(y[0], str)):
-                if self.class_names is None:
-                    raise ValueError("Class names are not attached to this model.")
+                if self.label_map is None:
+                    raise ValueError("Label map is not attached to this model.")
                 labels = np.array([self.label_map[label] for label in y], dtype=np.int32)
             else:
                 raise TypeError("y must be a numpy array or a list of labels.")
