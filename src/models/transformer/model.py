@@ -24,9 +24,9 @@ class TransformModel:
             vocab_size: int,
             pad_idx: int = 0,
             seq_len: int = 128,
-            d_model: int = 512,
-            num_heads: int = 16,
-            num_layers: int = 4,
+            d_model: int = 768,
+            num_heads: int = 12,
+            num_layers: int = 6,
             dropout: float = 0.2,
         ) -> "TransformModel":
         transform_model = cls()
@@ -58,6 +58,10 @@ class TransformModel:
             n_classes=len(checkpoint["label_map"]),
             pad_idx=checkpoint.get("pad_token_id") or 0,
             seq_len=checkpoint["seq_len"],
+            d_model=checkpoint["d_model"],
+            num_heads=checkpoint["num_heads"],
+            num_layers=checkpoint["num_layers"],
+            dropout=checkpoint["dropout"],
         ).to(torch_utils.device)
         transform_model.label_map = checkpoint["label_map"]
         transform_model.inverse_label_map = {v: k for k, v in transform_model.label_map.items()} if transform_model.label_map is not None else None

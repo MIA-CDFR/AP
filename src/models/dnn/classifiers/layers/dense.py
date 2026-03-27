@@ -30,11 +30,15 @@ class DenseLayer(Layer):
         return self.output
 
     def backward_propagation(self, output_error, learning_rate):
-        batch_size = output_error.shape[0] if output_error.ndim > 1 else 1
-
         input_error = np.dot(output_error, self.weights.T)
-        weights_error = np.dot(self.input.T, output_error) / batch_size
-        bias_error = np.sum(output_error, axis=0, keepdims=True) / batch_size
+
+        # Loss functions are expected to apply their own normalization.
+        # Dividing again here shrinks updates by an extra factor of batch size.
+        weights_error = np.dot(self.input.T, output_error)
+        if output_error.ndim > 1:
+            bias_error = np.sum(output_error, axis=0, keepdims=True)
+        else:
+            bias_error = output_error.reshape(1, -1)
 
         self.weights -= learning_rate * (weights_error + self.lambda_reg * self.weights)
         self.biases -= learning_rate * bias_error

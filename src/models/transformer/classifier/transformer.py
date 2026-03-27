@@ -37,8 +37,6 @@ class TransformerClassifier(nn.Module):
             activation="gelu",
         )
         self.encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
-        # Attention-weighted pooling instead of mean pooling
-        self.pooling_attn = nn.Linear(d_model, 1)
         self.dropout = nn.Dropout(dropout)
         self.classifier = nn.Linear(d_model, n_classes)
 
@@ -76,12 +74,8 @@ class TransformerClassifier(nn.Module):
 
         x = self.encoder(x, src_key_padding_mask=pad_mask)
 
-        # Attention-weighted pooling: assign attention weights to each token
-        attn_logits = self.pooling_attn(x)  # [B, T, 1]
-        # Mask out padding tokens before softmax (use large negative number instead of -inf for MPS compatibility)
-        attn_logits = attn_logits.masked_fill(pad_mask.unsqueeze(-1), -1e10)
-        attn_weights = torch.softmax(attn_logits, dim=1)  # [B, T, 1]
-        pooled = (x * attn_weights).sum(dim=1)  # [B, d_model]
+        valid_mask = (~pad_mask).unsqueeze(-1).to(dtype=x.dtype, device=x.device)  # [B, T, 1]
+        pooled = (x * valid_mask).sum(dim=1) / valid_mask.sum(dim=1).clamp(min=1.0)
 
         pooled = self.dropout(pooled)
         logits = self.classifier(pooled)
@@ -91,12 +85,7 @@ class TransformerClassifier(nn.Module):
             if self.n_classes == 1:
                 loss = nn.MSELoss()(logits.squeeze(-1), labels.float())
             elif labels.dtype in (torch.long, torch.int64, torch.int32):
-                # Label smoothing to prevent overconfidence
-                # Use class weights if available for balanced training
-                weight = getattr(self, 'class_weights', None)
-                if weight is not None:
-                    weight = weight.to(logits.device)  # Ensure weight is on same device as logits
-                loss = nn.CrossEntropyLoss(label_smoothing=0.1, weight=weight)(logits, labels.long())
+                loss = nn.CrossEntropyLoss()(logits, labels.long())
             else:
                 loss = nn.BCEWithLogitsLoss()(logits, labels.float())
 

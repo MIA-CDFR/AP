@@ -128,14 +128,15 @@ def get_agnews_dataset(n_lines: int = 10000) -> pd.DataFrame:
     return df[["id", "Text", "Label"]].sample(n_lines, random_state=42).reset_index(drop=True)
 
 
-def get_datasets() -> pd.DataFrame:
+def get_datasets(include_subm1: bool = False) -> pd.DataFrame:
     df_prof = get_prof_dataset()
     df_otb = get_otb_dataset()
     df_atdp = get_atdp_dataset()
     df_ap = get_ap_dataset()
     df_openai = get_openai_dataset()
-    df_subm1 = get_subm1_dataset()
     df_agnews = get_agnews_dataset()
+
+    df_subm1 = get_subm1_dataset() if include_subm1 else pd.DataFrame(columns=["id", "Text", "Label"])
 
     df = pd.concat([df_prof, df_otb, df_atdp, df_ap, df_openai, df_subm1, df_agnews], ignore_index=True)
 

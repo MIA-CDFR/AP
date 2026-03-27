@@ -45,9 +45,9 @@ class NumpyModel:
     def create(
         cls,
         input_dim,
-        tfid_word,
-        tfid_char,
         label_map,
+        tfid_word = None,
+        tfid_char = None,
         hand_feature_names=None,
         hand_mean=None,
         hand_std=None,
@@ -85,23 +85,33 @@ class NumpyModel:
 
     def save(self, path: str):
         try:
-            with gzip.open(path, "wb") as file:
-                pickle.dump(self, file)
+            if self.tfidf_word is not None:
+                self.tfidf_word.vocab.frequencies.clear()
+
+            if self.tfidf_char is not None:
+                self.tfidf_char.vocab.frequencies.clear()
+
+            with gzip.open(path, "wb", compresslevel=9) as file:
+                pickle.dump(self, file, protocol=pickle.HIGHEST_PROTOCOL)
         except OSError:
             with open(path, "wb") as file:
-                pickle.dump(self, file)
+                pickle.dump(self, file, protocol=pickle.HIGHEST_PROTOCOL)
 
     def predict(self, texts, y=None):
         if isinstance(texts, np.ndarray):
             features = texts.astype(np.float32, copy=False)
         elif isinstance(texts, list) and (len(texts) == 0 or isinstance(texts[0], str)):
-            if self.tfidf_word is None or self.tfidf_char is None:
-                raise ValueError("TF-IDF vectorizers are not attached to this model.")
+            feature_blocks = []
 
-            cleaned_texts = [preprocess_text(text) for text in texts]
-            normalized_texts = [normalize_text(text) for text in texts]
-            word_features = self.tfidf_word.transform(cleaned_texts)
-            char_features = self.tfidf_char.transform(normalized_texts)
+            if self.tfidf_word is not None:
+                cleaned_texts = [preprocess_text(text) for text in texts]
+                word_features = self.tfidf_word.transform(cleaned_texts)
+                feature_blocks.append(word_features.astype(np.float32, copy=False))
+
+            if self.tfidf_char is not None:
+                normalized_texts = [normalize_text(text) for text in texts]
+                char_features = self.tfidf_char.transform(normalized_texts)
+                feature_blocks.append(char_features.astype(np.float32, copy=False))
 
             # Extract hand-crafted features if available
             if self.hand_feature_names is not None:
@@ -117,9 +127,15 @@ class NumpyModel:
                 if self.hand_mean is not None and self.hand_std is not None:
                     x_hand = (x_hand - self.hand_mean) / self.hand_std
 
-                features = np.hstack([word_features, char_features, x_hand]).astype(np.float32)
+                feature_blocks.append(x_hand.astype(np.float32, copy=False))
+
+            if not feature_blocks:
+                raise ValueError("No feature extractors are attached to this model.")
+
+            if len(feature_blocks) == 1:
+                features = feature_blocks[0]
             else:
-                features = np.hstack([word_features, char_features]).astype(np.float32)
+                features = np.hstack(feature_blocks).astype(np.float32, copy=False)
         else:
             raise TypeError("X must be a numpy feature matrix or a list of raw texts.")
 
