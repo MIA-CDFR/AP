@@ -13,13 +13,13 @@ class NumpyModel:
     def __init__(
         self,
         n_classes: int = 5,
-        hidden_units: tuple[int, int] = (1024, 512),
-        dropout_rates: tuple[float, float] = (0.2, 0.1),
+        hidden_units: tuple[int, int, int] = (512, 256, 128),
+        dropout_rates: tuple[float, float, float] = (0.2, 0.1, 0.1),
     ):
-        if len(hidden_units) != 2:
-            raise ValueError("hidden_units must contain exactly two layer sizes")
-        if len(dropout_rates) != 2:
-            raise ValueError("dropout_rates must contain exactly two rates")
+        if len(hidden_units) != 3:
+            raise ValueError("hidden_units must contain exactly three layer sizes")
+        if len(dropout_rates) != 3:
+            raise ValueError("dropout_rates must contain exactly three rates")
 
         self.nn = NeuralNetwork()
         self.nn.add_layer(DenseLayer(hidden_units[0]))
@@ -28,6 +28,9 @@ class NumpyModel:
         self.nn.add_layer(DenseLayer(hidden_units[1]))
         self.nn.add_layer(ReLU())
         self.nn.add_layer(Dropout(dropout_rates[1]))
+        self.nn.add_layer(DenseLayer(hidden_units[2]))
+        self.nn.add_layer(ReLU())
+        self.nn.add_layer(Dropout(dropout_rates[2]))
         self.nn.add_layer(DenseLayer(n_classes))
         self.nn.add_layer(Softmax())
 
@@ -51,8 +54,8 @@ class NumpyModel:
         hand_feature_names=None,
         hand_mean=None,
         hand_std=None,
-        hidden_units: tuple[int, int] = (1024, 512),
-        dropout_rates: tuple[float, float] = (0.2, 0.1),
+        hidden_units: tuple[int, int, int] = (512, 256, 128),
+        dropout_rates: tuple[float, float, float] = (0.2, 0.1, 0.1),
         loss: LossFunction = None,
     ) -> "NumpyModel":
         model = cls(
