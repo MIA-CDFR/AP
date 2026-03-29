@@ -65,7 +65,7 @@ class EarlyStopping:
 class PyTorchTrainer:
     @staticmethod
     def train(epochs: int = 10, batch_size: int = 32, learning_rate: float = 0.001):
-        df = get_datasets(include_subm1=True)
+        df = get_datasets(submission_round=1, balance=True, target_per_class=5000)
 
         X_texts = df["Text"].tolist()
         y_labels = df["Label"].tolist()
@@ -256,6 +256,11 @@ class PyTorchTrainer:
 
         plt.suptitle("PyTorch DNN — Training History", fontweight="bold")
         plt.tight_layout()
+        output_dir = main_folder / ".." / "docs" / "article" / "images"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "pytorch_dnn_train.png"
+        plt.savefig(output_path, dpi=200, bbox_inches="tight")
+        print("History plot saved to", output_path)
         plt.show()
 
     @staticmethod

@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+import scipy.sparse
 from rich.console import Console
 from rich.table import Table
 from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
@@ -82,6 +83,17 @@ class TrainNumpy:
         return accs
 
     @staticmethod
+    def _predict_batches(nn, X, batch_size: int = 512) -> np.ndarray:
+        """Forward pass in batches so we never densify the full sparse matrix at once."""
+        parts = []
+        for start in range(0, X.shape[0], batch_size):
+            chunk = X[start : start + batch_size]
+            if scipy.sparse.issparse(chunk):
+                chunk = chunk.toarray()
+            parts.append(nn.forward_propagation(chunk, training=False))
+        return np.vstack(parts)
+
+    @staticmethod
     def build_tfidf_vectorizer(texts: list[str], ngram_range=(1, 2), max_features=5000) -> TFIDF:
         tfidf = TFIDF(ngram_range=ngram_range, max_features=max_features)
         tfidf.fit(texts)
@@ -114,7 +126,7 @@ class TrainNumpy:
             )
             use_balanced_sampling = False
 
-        df = get_datasets(include_subm1=True)
+        df = get_datasets(submission_round=1, balance=True, target_per_class=5000)
 
         df["Text_clean"] = df["Text"].apply(preprocess_text)
         X_word_texts = df["Text_clean"].tolist()
@@ -163,8 +175,8 @@ class TrainNumpy:
             X_train_char = tfidf_char.transform(X_train_char_texts)
             X_eval_char = tfidf_char.transform(X_eval_char_texts)
 
-            X_train = np.hstack([X_train, X_train_char]).astype(np.float32, copy=False)
-            X_eval = np.hstack([X_eval, X_eval_char]).astype(np.float32, copy=False)
+            X_train = scipy.sparse.hstack([X_train, X_train_char], format="csr").astype(np.float32)
+            X_eval = scipy.sparse.hstack([X_eval, X_eval_char], format="csr").astype(np.float32)
 
         if enable_handcrafted:
             df["Features"] = df["Text"].apply(lambda txt: extract_features(txt, preprocess_text(txt)))
@@ -180,8 +192,8 @@ class TrainNumpy:
             x_hand_train = (x_hand_train - hand_mean) / hand_std
             x_hand_eval = (x_hand_eval - hand_mean) / hand_std
 
-            X_train = np.hstack([X_train, x_hand_train]).astype(np.float32, copy=False)
-            X_eval = np.hstack([X_eval, x_hand_eval]).astype(np.float32, copy=False)
+            X_train = scipy.sparse.hstack([X_train, scipy.sparse.csr_matrix(x_hand_train)], format="csr").astype(np.float32)
+            X_eval = scipy.sparse.hstack([X_eval, scipy.sparse.csr_matrix(x_hand_eval)], format="csr").astype(np.float32)
 
         y_train = np.asarray(y_train, dtype=np.int64)
         y_eval = np.asarray(y_eval, dtype=np.int64)
@@ -245,14 +257,16 @@ class TrainNumpy:
                         seed=SEED + epoch,
                     )
                 else:
-                    indices = np.random.permutation(len(X_train))
+                    indices = np.random.permutation(X_train.shape[0])
 
                 epoch_loss = 0.0
                 n_batches = 0
 
-                for start in range(0, len(X_train), batch_size):
+                for start in range(0, X_train.shape[0], batch_size):
                     batch_idx = indices[start:start + batch_size]
                     X_batch = X_train[batch_idx]
+                    if scipy.sparse.issparse(X_batch):
+                        X_batch = X_batch.toarray()
                     y_batch_one_hot = y_train_one_hot[batch_idx]
                     y_batch = y_train[batch_idx]
 
@@ -273,11 +287,11 @@ class TrainNumpy:
 
                 avg_loss = epoch_loss / n_batches
 
-                train_probs = model.nn.forward_propagation(X_train, training=False)
+                train_probs = TrainNumpy._predict_batches(model.nn, X_train)
                 train_preds = np.argmax(train_probs, axis=1)
                 train_acc = np.mean(train_preds == y_train)
 
-                eval_probs = model.nn.forward_propagation(X_eval, training=False)
+                eval_probs = TrainNumpy._predict_batches(model.nn, X_eval)
                 eval_preds = np.argmax(eval_probs, axis=1)
                 eval_acc = np.mean(eval_preds == y_eval)
                 per_class_eval = TrainNumpy._per_class_accuracy(y_eval, eval_preds, len(unique_labels))
@@ -303,7 +317,7 @@ class TrainNumpy:
 
         # print per-class summary after training
         console = Console()
-        eval_probs = model.nn.forward_propagation(X_eval, training=False)
+        eval_probs = TrainNumpy._predict_batches(model.nn, X_eval)
         eval_preds = np.argmax(eval_probs, axis=1)
         eval_acc = np.mean(eval_preds == y_eval)
         t = Table(title="Final Results", box=box.ROUNDED)
@@ -343,6 +357,11 @@ class TrainNumpy:
 
         plt.suptitle("NumPy DNN — Training History", fontweight="bold")
         plt.tight_layout()
+        output_dir = main_folder / ".." / "docs" / "article" / "images"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "numpy_dnn_train.png"
+        plt.savefig(output_path, dpi=200, bbox_inches="tight")
+        print("History plot saved to", output_path)
         plt.show()
 
     @staticmethod

@@ -1,11 +1,11 @@
 # Fdb version 4
-["xdvipdfmx"] 1774795153.46859 "main.xdv" "main.pdf" "main" 1774795153.81344 0
-  "main.xdv" 1774795153.45563 35628 e2b429f6099cd4974b77eadc5e8ca3df "xelatex"
+["xdvipdfmx"] 1774818981.73164 "main.xdv" "main.pdf" "main" 1774818982.21772 0
+  "main.xdv" 1774818981.71439 38820 17fe071755fd9ccfaaf7421a59096b86 "xelatex"
   (generated)
   "main.pdf"
   (rewritten before read)
-["xelatex"] 1774795153.26738 "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/article/main.tex" "main.xdv" "main" 1774795153.81305 0
-  "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/article/main.tex" 1774795152.95782 27306 decffd095ebc75710ab088e2aa6fab25 ""
+["xelatex"] 1774818981.4908 "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/article/main.tex" "main.xdv" "main" 1774818982.2171 0
+  "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/article/main.tex" 1774818981.0913 29772 470bccba2333ca56b731481af8c6405c ""
   "/usr/local/texlive/2026/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/local/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex9.tfm" 1246382020 996 a18840b13b499c08ac2de96a99eda4bc ""
@@ -58,11 +58,12 @@
   "/usr/local/texlive/2026/texmf-dist/web2c/texmf.cnf" 1770478701 43630 e9fa012910491fe5ae08a72c3c2997a7 ""
   "/usr/local/texlive/2026/texmf-var/web2c/xetex/xelatex.fmt" 1774041148 5948559 1db49bf15858a732af7d952f30185331 ""
   "/usr/local/texlive/2026/texmf.cnf" 1772409725 577 648cd9f92f9c0eac486f4c71c85cfbbe ""
+  "images/distribuicao_classes.png" 1774817856.07162 14624 ede2edb723072fb47b5feb8f527428e7 ""
   "images/numpy_dnn_train.png" 1774625462.43497 41910 9843a4f59afdbaed33496d00d2afd83e ""
-  "images/pytorch_dnn_train.png" 1774624361.57874 42014 d4b4807ee184a56b96fd7530bd872818 ""
+  "images/pytorch_dnn_train.png" 1774818312.07396 39846 981abe73c8008706d22db80f22e896da ""
   "images/transformer_train.png" 1774632566.65387 42309 3cde1a8d6dc1986800c1235bedde8545 ""
-  "main.aux" 1774795153.45484 4331 03b34a141daec2929503961b4903a4ed "xelatex"
-  "main.tex" 1774795152.95782 27306 decffd095ebc75710ab088e2aa6fab25 ""
+  "main.aux" 1774818981.71361 4746 fcacaff6a58df2f31edd0b3a5027b873 "xelatex"
+  "main.tex" 1774818981.0913 29772 470bccba2333ca56b731481af8c6405c ""
   (generated)
   "main.aux"
   "main.log"

@@ -22,7 +22,7 @@
 %
 \begin{document}
 %
-\title{Classificador de Textos com Redes Neurais Profundas}
+\title{Análise Comparativa de Arquiteturas para Classificação de Textos}
 %
 %\titlerunning{Abbreviated paper title}
 % If the paper title is too long for the running head, you can set
@@ -45,12 +45,16 @@ Rui Manuel Martins Marques Rodrigues\inst{1}}
 \begin{abstract}
 Este trabalho aborda o problema de classificação de origem textual em cenário multiclasse, distinguindo textos escritos por humanos de textos gerados automaticamente e, neste último caso, identificando a família do modelo gerador (Anthropic, Google, Meta ou OpenAI). Para esse fim, foi definida uma pipeline supervisionada com recolha e integração de múltiplos datasets públicos, balanceamento de classes e divisão estratificada de treino e avaliação. No pré-processamento, foram exploradas representações vetoriais baseadas em TF-IDF (palavra e caráter), complementadas por \textit{features} estilométricas e estatísticas.
 
-Do ponto de vista metodológico, foram comparadas diferentes famílias de modelos: um \textit{baseline} linear regularizado, uma DNN implementada de raiz em NumPy, uma DNN em PyTorch, um Transformer encoder treinado para a tarefa e um modelo pré-treinado RoBERTa ajustado por \textit{fine-tuning}. A comparação foi conduzida com métricas de classificação multiclasse, com ênfase em \textit{accuracy} e \(F1\)-macro, analisando também estabilidade por classe.
+Do ponto de vista metodológico, foram comparadas diferentes famílias de modelos: um \textit{baseline} linear regularizado, uma rede neuronal implementada de raiz em NumPy, uma rede neuronal em PyTorch, um Transformer encoder treinado para a tarefa e um modelo pré-treinado RoBERTa ajustado por \textit{fine-tuning}. A comparação foi conduzida com métricas de classificação multiclasse, com ênfase em \textit{accuracy} e \(F1\)-macro, analisando também estabilidade por classe.
 
 Como principal contribuição, o estudo fornece uma análise comparativa entre arquiteturas de diferentes níveis de complexidade, discutindo o compromisso entre custo computacional, capacidade representacional e robustez na classificação de origem textual.
 
-\keywords{Deep Learning \and Text Classification \and Neural Networks \and Natural Language Processing \and Machine Learning \and Artificial Intelligence}
+\keywords{Deep Learning \and Text Classification \and Neural Networks \and Transformers \and Natural Language Processing \and Machine Learning \and Artificial Intelligence}
 \end{abstract}
+
+\noindent\textbf{Código e reprodutibilidade.}
+O código-fonte, instruções de execução e artefatos experimentais estão disponíveis em:
+\url{https://github.com/MIA-CDFR/AP}.
 %
 %
 %
@@ -60,7 +64,7 @@ A classificação de textos é uma tarefa fundamental em Processamento de Lingua
 
 Este trabalho tem como objetivo desenvolver e comparar modelos de aprendizagem supervisionada para classificar textos segundo a sua origem, distinguindo produção humana de produção automática. Para textos de origem automática, o trabalho visa identificar a família do modelo gerador, considerando especificamente as famílias de modelos Anthropic, Google, Meta e OpenAI.
 
-Para avaliar diferentes estratégias de representação textual e arquiteturas de classificação, foram desenvolvidos cinco modelos distintos: um \textit{baseline} linear para comparação, dois modelos DNN (um com implementação NumPy pura e outro com PyTorch para validação), e dois modelos baseados em \textit{Transformers} (um genérico treinado do zero e outro baseado em \textit{fine-tuning} de BERT pré-treinado). Esta abordagem permite análise comparativa entre métodos tradicionais e modernos de PLN.
+Para avaliar diferentes estratégias de representação textual e arquiteturas de classificação, foram desenvolvidos cinco modelos distintos: um \textit{baseline} linear para comparação, dois modelos DNN (um com implementação NumPy~\cite{ref_numpy} pura e outro com PyTorch~\cite{ref_pytorch} para validação), e dois modelos baseados em \textit{Transformers} (um genérico treinado do zero e outro baseado em \textit{fine-tuning} de BERT pré-treinado). Esta abordagem permite análise comparativa entre métodos tradicionais e modernos de PLN.
 
 \begin{itemize}
     \item \textbf{Baseline Linear Regularizado}: Implementação de um modelo linear de referência (Regressão Logística com regularização L2) utilizando apenas NumPy, para estabelecer um \textit{benchmark} de desempenho e comparação com métodos mais complexos.
@@ -71,7 +75,7 @@ Para avaliar diferentes estratégias de representação textual e arquiteturas d
     
     \item \textbf{\textit{Transformer} Genérico}: Implementação de um modelo \textit{Transformer} para classificação de texto, utiliza arquitetura baseada em auto-atenção multi-cabeça e camadas \textit{feedforward}, com opção de treino do zero ou inicialização com pesos pré-treinados.
     
-    \item \textbf{BERT Fine-tuned}: Utilização do modelo BERT pré-treinado (\textbf{roberta-base}) para classificação, realizando \textit{fine-tuning} específico para a tarefa de classificação de origem de textos, aproveitando conhecimento de linguagem pré-existente.
+    \item \textbf{BERT Fine-tuned}: Utilização do modelo BERT pré-treinado (\textbf{roberta-base}~\cite{ref_roberta}) para classificação, realizando \textit{fine-tuning} específico para a tarefa de classificação de origem de textos, aproveitando conhecimento de linguagem pré-existente.
 \end{itemize}
 
 \section{Seleção de Datasets e Preprocessamento}
@@ -96,12 +100,17 @@ Dados adicionais foram fornecidos durante o desenvolvimento experimental:
 \begin{itemize}
     \item \textit{Dataset de Exemplos}: disponibilizado pelo professor na fase inicial, contendo 125 amostras com distribuição: Anthropic (23), Google (16), Meta (17), OpenAI (17) e Human (52). Utilizado na 1\textsuperscript{a} submissão como parte do treino.
 
-    \item \textit{Dataset Revelado 1\textsuperscript{a} Submissão}: dataset com labels revelados após a 1\textsuperscript{a} submissão, contendo 500 amostras com distribuição: Anthropic (83), Google (83), Human (167), Meta (83) e OpenAI (84). Integrado ao treino na 2\textsuperscript{a} submissão.
+    \item \textit{Dataset Revelado 1\textsuperscript{a} Submissão}: dataset com labels revelados após a 1\textsuperscript{a} submissão, contendo 100 amostras com distribuição: Anthropic (17), Google (17), Human (34), Meta (18) e OpenAI (14). Integrado ao treino na 2\textsuperscript{a} submissão.
 
-    \item \textit{Dataset Revelado 2\textsuperscript{a} Submissão}: dataset com labels revelados após a 2\textsuperscript{a} submissão, contendo 500 amostras com distribuição idêntica à 1ª submissão. Integrado ao treino na 3\textsuperscript{a} submissão.
+    \item \textit{Dataset Revelado 2\textsuperscript{a} Submissão}: dataset com labels revelados após a 2\textsuperscript{a} submissão, contendo 100 amostras com distribuição: Anthropic (16), Google (18), Human (34), Meta (16) e OpenAI (16). Integrado ao treino na 2\textsuperscript{a} submissão.
 \end{itemize}
 
-Dado o forte desequilíbrio entre classes no conjunto de dados brutos (1.028.146 amostras de \emph{Human} contra 3.360 de \emph{Anthropic}), foi aplicado um processo de balanceamento no conjunto de treino de cada submissão para reduzir viés para a classe majoritária. O procedimento incluiu \textit{undersampling} na classe \emph{Human} e \textit{oversampling} nas classes minoritárias, resultando em 37.283 amostras equilibradas por classe (223.698 amostras totais em cada versão do conjunto de treino).
+Face ao acentuado desequilíbrio entre classes no conjunto de dados bruto (1.028.146 amostras da classe \emph{Human} versus 3.360 da classe \emph{Anthropic}), foi adotada uma estratégia de balanceamento no conjunto de treino de cada submissão, com o objetivo de mitigar o viés em favor da classe majoritária. Esse procedimento combinou \textit{undersampling} da classe \emph{Human} com \textit{oversampling} das classes minoritárias. Adicionalmente, o número de amostras por classe foi limitado a 5.000, resultando em um conjunto balanceado com 5.000 instâncias por classe (25.000 amostras no total, em cada versão do conjunto de treino). Como pode ser observado na Fig.~\ref{distribuicao_classes}.
+
+\begin{figure}
+\includegraphics[width=\textwidth]{images/distribuicao_classes.png}
+\caption{Distribuição das classes no conjunto de treino e teste.} \label{distribuicao_classes}
+\end{figure}
 
 Para a divisão entre treino e teste, foi utilizada a estratégia de divisão 80/20, onde 80\% dos dados foram utilizados para treino e 20\% para teste. A divisão foi realizada de forma estratificada, garantindo que a proporção de amostras por classe se mantivesse uniforme em ambos os conjuntos.
 
@@ -157,11 +166,11 @@ O modelo Transformer utiliza um tokenizador genérico para vocabulário comparti
 O modelo BERT utiliza um tokenizador e configuração pré-treinados do modelo base. O preprocessamento específico para BERT é o seguinte:
 
 \begin{enumerate}
-    \item \textit{Tokenização BERT}: Utiliza o tokenizador específico do modelo pré-treinado \textbf{roberta-base}, que normaliza a entrada e aplica tokenização BPE. Tokens especiais do RoBERTa, como \texttt{<s>}, \texttt{</s>} e \texttt{<pad>}, são inseridos automaticamente conforme o formato esperado pelo modelo.
+    \item \textit{Tokenização BERT}: Utiliza o tokenizador específico do modelo pré-treinado \textbf{roberta-base}~\cite{ref_roberta}, que normaliza a entrada e aplica tokenização BPE. Tokens especiais do RoBERTa~\cite{ref_roberta}, como \texttt{<s>}, \texttt{</s>} e \texttt{<pad>}, são inseridos automaticamente conforme o formato esperado pelo modelo.
     
-    \item \textit{Sequências de Entrada}: O texto é convertido em sequências de tokens no formato de entrada do RoBERTa, com tokens especiais no início e no fim da sequência. As sequências são truncadas ou preenchidas até um comprimento máximo (\textit{default} 512 tokens).
+    \item \textit{Sequências de Entrada}: O texto é convertido em sequências de tokens no formato de entrada do RoBERTa~\cite{ref_roberta}, com tokens especiais no início e no fim da sequência. As sequências são truncadas ou preenchidas até um comprimento máximo (\textit{default} 512 tokens).
     
-    \item \textit{Embeddings Posicionais}: O modelo adiciona embeddings posicionais aos embeddings de token antes do processamento pelas camadas Transformer. No caso do RoBERTa, não são utilizados \textit{token type embeddings} (embeddings de segmento) como no BERT clássico.
+    \item \textit{Embeddings Posicionais}: O modelo adiciona embeddings posicionais aos \textit{embeddings} de \textit{token} antes do processamento pelas camadas \textit{Transformer}. No caso do RoBERTa~\cite{ref_roberta}, não são utilizados \textit{token type embeddings} (\textit{embeddings} de segmento) como no BERT clássico.
 \end{enumerate}
 
 \subsection{Formulação Matemática}
@@ -208,14 +217,14 @@ No mecanismo de autoatenção:
 \mathrm{Attention}(\mathbf{Q},\mathbf{K},\mathbf{V})=
 \mathrm{softmax}\!\left(\frac{\mathbf{Q}\mathbf{K}^{\top}}{\sqrt{d_k}}\right)\mathbf{V}.
 \]
-No Transformer genérico, após o encoder, usa-se \textit{mean pooling} mascarado:
+No \textit{Transformer} genérico, após o encoder, usa-se \textit{mean pooling} mascarado:
 \[
 \mathbf{h}_{\mathrm{pool}}=
 \frac{\sum_{i=1}^{T} m_i\,\mathbf{h}_i}{\sum_{i=1}^{T} m_i},
 \]
 onde \(m_i\in\{0,1\}\) indica tokens válidos (não \textit{padding}).
 
-No RoBERTa \textit{fine-tuning}, a cabeça de classificação aplica projeção linear sobre a representação contextual e otimiza novamente a perda de entropia cruzada multiclasse.
+No RoBERTa \textit{fine-tuning}~\cite{ref_roberta}, a cabeça de classificação aplica projeção linear sobre a representação contextual e otimiza novamente a perda de entropia cruzada multiclasse.
 
 \section{Arquiteturas de Modelos}
 
@@ -233,17 +242,17 @@ O modelo DNN em PyTorch preserva a mesma ideia arquitetural da versão NumPy, ma
 \(\text{Linear}(d,512)\rightarrow\text{ReLU}\rightarrow\text{Dropout}(0.3)\rightarrow\text{Linear}(512,256)\rightarrow\text{ReLU}\rightarrow\text{Dropout}(0.2)\rightarrow\text{Linear}(256,128)\rightarrow\text{ReLU}\rightarrow\text{Dropout}(0.2)\rightarrow\text{Linear}(128,C)\).
 Esta configuração permite comparar diretamente o efeito da framework de treino, mantendo profundidade e capacidade semelhantes à versão NumPy.
 
-\subsection{Transformer Generico}
+\subsection{Transformer Genérico}
 
 O classificador Transformer é \textit{encoder-only}, composto por embedding de tokens, embedding posicional aprendível e uma pilha de blocos \textit{Transformer Encoder}. A configuração utilizada foi: comprimento máximo de sequência \(T=512\), dimensão do modelo \(d_{model}=512\), \(16\) cabeças de atenção, \(6\) camadas encoder, \textit{dropout} \(0.2\) e ativação GELU no \textit{feedforward}. A representação final da sequência é obtida por \textit{mean pooling} mascarado (ignorando \textit{padding}), seguida de \textit{dropout} e camada linear para logits multiclasse.
 
 \subsection{BERT Fine-tuning (RoBERTa-base)}
 
-O quarto modelo utiliza \textit{fine-tuning} de um encoder pré-treinado, concretamente \textbf{roberta-base}, através de \texttt{AutoModelForSequenceClassification}. A arquitetura base possui 12 camadas Transformer, dimensão oculta 768 e 12 cabeças de atenção. Sobre o encoder pré-treinado é adicionada uma cabeça de classificação para \(C\) classes. O treino ajusta fim-a-fim tanto o encoder como a cabeça final, permitindo transferir conhecimento linguístico pré-treinado para a tarefa de classificação de origem textual.
+O quarto modelo utiliza \textit{fine-tuning} de um encoder pré-treinado, concretamente \textbf{roberta-base}~\cite{ref_roberta}, através de \texttt{AutoModelForSequenceClassification}. A arquitetura base possui 12 camadas Transformer, dimensão oculta 768 e 12 cabeças de atenção. Sobre o encoder pré-treinado é adicionada uma cabeça de classificação para \(C\) classes. O treino ajusta fim-a-fim tanto o encoder como a cabeça final, permitindo transferir conhecimento linguístico pré-treinado para a tarefa de classificação de origem textual.
 
 \section{Treino e Avaliação}
 
-Todos os modelos foram treinados com divisão estratificada \(80/20\) entre treino e avaliação, preservando a proporção de classes. A avaliação baseou-se em métricas de classificação multiclasse, com ênfase em \textit{accuracy} e, nos modelos baseados em \textit{Trainer} (Transformer e RoBERTa), em \(F1\)-macro para seleção do melhor checkpoint.
+Todos os modelos foram treinados com divisão estratificada \(80/20\) entre treino e avaliação, preservando a proporção de classes. A avaliação baseou-se em métricas de classificação multiclasse, com ênfase em \textit{accuracy} e, nos modelos baseados em \textit{Trainer} (Transformer e RoBERTa), em \(F1\)-macro para seleção do melhor \textit{checkpoint}.
 
 \begin{table}[t]
 \caption{Comparação de desempenho dos modelos no conjunto de avaliação.}
@@ -254,10 +263,10 @@ Todos os modelos foram treinados com divisão estratificada \(80/20\) entre trei
 Modelo & Accuracy & Macro-F1 & Macro-Precision & Macro-Recall \\
 \hline
 Baseline Linear & -- & -- & -- & -- \\
-NumPy DNN & -- & -- & -- & -- \\
-PyTorch DNN & -- & -- & -- & -- \\
-Transformer Genérico & -- & -- & -- & -- \\
-RoBERTa-base (fine-tuning) & -- & -- & -- & -- \\
+NumPy DNN & 0.3700 & 0.3171 & 0.3885 & 0.3706 \\
+PyTorch DNN & 0.3300 & 0.2854 & 0.2935 & 0.3092 \\
+Transformer Genérico & 0.5900 & 0.5097 & 0.6712 & 0.5456 \\
+RoBERTa-base (fine-tuning) & 0.7900 & 0.7487 & 0.7892 & 0.7791 \\
 \hline
 \end{tabular}
 \end{table}
@@ -286,7 +295,7 @@ No fim do treino, os resultados são visualizados na Fig.~\ref{pytorch_dnn_train
 
 \subsection{Transformer Genérico}
 
-O Transformer genérico foi treinado com a API \textit{Trainer} da biblioteca \textit{Transformers}, com os seguintes hiperparâmetros principais: 3 épocas, \(\text{batch\_size}=32\), \(\text{learning\_rate}=2\times10^{-4}\), \textit{weight decay} de \(0.01\), \textit{warmup ratio} de \(0.1\) e \textit{scheduler} cosseno. A avaliação foi executada ao fim de cada época, com retenção automática do melhor checkpoint segundo \(F1\)-macro.
+O Transformer genérico foi treinado com a API \textit{Trainer} da biblioteca \textit{Transformers}, com os seguintes hiperparâmetros principais: 3 épocas, \(\text{batch\_size}=32\), \(\text{learning\_rate}=2\times10^{-4}\), \textit{weight decay} de \(0.01\), \textit{warmup ratio} de \(0.1\) e \textit{scheduler} cosseno. A avaliação foi executada ao fim de cada época, com retenção automática do melhor \textit{checkpoint} segundo \(F1\)-macro.
 
 No fim do treino, os resultados são visualizados na Fig.~\ref{transformer_train}.
 
@@ -297,15 +306,15 @@ No fim do treino, os resultados são visualizados na Fig.~\ref{transformer_train
 
 \subsection{BERT Fine-tuning (RoBERTa-base)}
 
-O modelo RoBERTa-base foi ajustado por \textit{fine-tuning} com \textit{Trainer}, utilizando 3 épocas, \(\text{batch\_size}=32\), \(\text{learning\_rate}=2\times10^{-5}\), \textit{weight decay} de \(0.01\), comprimento máximo de sequência 256 e acumulação de gradientes em 2 passos. A avaliação foi realizada por época, com carregamento automático do melhor modelo no final do treino segundo \(F1\)-macro.
+O modelo RoBERTa-base~\cite{ref_roberta} foi ajustado por \textit{fine-tuning} com \textit{Trainer}, utilizando 3 épocas, \(\text{batch\_size}=32\), \(\text{learning\_rate}=2\times10^{-5}\), \textit{weight decay} de \(0.01\), comprimento máximo de sequência 256 e acumulação de gradientes em 2 passos. A avaliação foi realizada por época, com carregamento automático do melhor modelo no final do treino segundo \(F1\)-macro.
 
 Em termos comparativos, a avaliação final considerou consistência entre desempenho global (\textit{accuracy}/\(F1\)-macro) e estabilidade por classe, permitindo analisar o compromisso entre modelos mais leves (DNNs) e modelos baseados em \textit{Transformers}.
 
 \section{Discussão}
 
-Os resultados obtidos sugerem um compromisso claro entre custo computacional e capacidade de generalização. Modelos DNN baseados em vetorização TF-IDF apresentam treino mais rápido e maior simplicidade de interpretação, enquanto modelos baseados em \textit{Transformers} tendem a capturar padrões semânticos mais complexos. Em particular, a comparação entre NumPy DNN e PyTorch DNN permite isolar o impacto da infraestrutura de treino, mantendo estrutura de rede semelhante. Já a comparação entre Transformer Genérico e RoBERTa-base evidencia a vantagem potencial do \textit{transfer learning} quando há limitação de dados rotulados.
+Os resultados obtidos evidenciam diferenças claras de desempenho entre as arquiteturas avaliadas. O melhor resultado foi alcançado pelo modelo RoBERTa-base ajustado por \textit{fine-tuning}, com \textit{accuracy} de 0.7900 e \(F1\)-macro de 0.7487, além de \textit{macro-precision} de 0.7892 e \textit{macro-recall} de 0.7791. Em seguida, o Transformer genérico apresentou desempenho intermediário, com \textit{accuracy} de 0.5900 e \(F1\)-macro de 0.5097, confirmando que arquiteturas baseadas em atenção já oferecem ganho substancial em relação às DNNs baseadas em TF-IDF, ainda que permaneçam abaixo do modelo pré-treinado. Esse resultado reforça a vantagem do \textit{transfer learning} quando há disponibilidade limitada de dados rotulados e necessidade de maior capacidade representacional.
 
-Adicionalmente, a análise por classe é essencial para interpretar desempenho real em cenário desbalanceado. Métricas agregadas podem ocultar degradações em classes minoritárias, pelo que a leitura conjunta de \textit{accuracy}, \(F1\)-macro e desempenho por classe deve orientar a seleção final do modelo.
+Entre os modelos vetoriais, o NumPy DNN superou o PyTorch DNN nesta avaliação, com \textit{accuracy} de 0.3700 contra 0.3300 e \(F1\)-macro de 0.3171 contra 0.2854. Embora ambas as abordagens apresentem menor custo computacional e maior simplicidade de interpretação, os resultados sugerem que, neste cenário, as representações TF-IDF combinadas com arquiteturas densas não capturaram de forma suficiente os padrões semânticos necessários para discriminar com robustez a origem textual. Adicionalmente, a análise por classe permanece essencial, pois métricas agregadas podem ocultar degradações relevantes em classes específicas; por isso, a leitura conjunta de \textit{accuracy}, \(F1\)-macro e estabilidade por classe deve orientar a seleção final do modelo.
 
 \section{Limitações e Ameaças à Validade}
 
@@ -317,7 +326,7 @@ Como ameaças à validade externa, os resultados podem não generalizar integral
 
 Este trabalho apresentou uma comparação sistemática entre abordagens lineares, DNNs e \textit{Transformers} para classificação de origem textual. A análise conjunta dos modelos permite concluir que arquiteturas mais simples permanecem competitivas em custo-benefício, enquanto modelos \textit{Transformer}-based oferecem maior capacidade representacional em cenários de maior complexidade semântica.
 
-Como trabalho futuro, recomenda-se: (i) validação cruzada com múltiplas sementes para reduzir variância experimental; (ii) estudo de calibração de probabilidades e análise de incerteza; (iii) exploração de técnicas de \textit{data augmentation} textual e \textit{domain adaptation}; e (iv) inclusão de análises estatísticas de significância entre modelos para reforçar a robustez das conclusões.
+Como trabalho futuro, recomenda-se: (i) realizar validação cruzada com múltiplas sementes para reduzir a variância experimental; (ii) investigar calibração de probabilidades e análise de incerteza; (iii) explorar técnicas de \textit{data augmentation} textual e \textit{domain adaptation}; (iv) incluir testes estatísticos de significância para reforçar a robustez das conclusões; (v) avaliar abordagens de \textit{few-shot learning} com LLMs; e (vi) investigar estratégias híbridas que combinem modelos DNN e \textit{Transformers}.
 
 %
 % ---- Bibliography ----
@@ -329,24 +338,15 @@ Como trabalho futuro, recomenda-se: (i) validação cruzada com múltiplas semen
 % \bibliography{mybibliography}
 %
 \begin{thebibliography}{12}
-\bibitem{ref_article1}
-Author, F.: Article title. Journal \textbf{2}(5), 99--110 (2016)
 
-\bibitem{ref_lncs1}
-Author, F., Author, S.: Title of a proceedings paper. In: Editor,
-F., Editor, S. (eds.) CONFERENCE 2016, LNCS, vol. 9999, pp. 1--13.
-Springer, Heidelberg (2016). \doi{10.10007/1234567890}
+\bibitem{ref_numpy}
+Harris, C.R., Millman, K.J., van der Walt, S.J., Gommers, R., Virtanen, P., Cournapeau, D., Wieser, E., Taylor, J., Berg, S., Smith, N.J., Kern, R., Picus, M., Hoyer, S., van Kerkwijk, M.H., Brett, M., Haldane, A., Fernandez del Rio, J., Wiebe, M., Peterson, P., Gerard-Marchant, P., Sheppard, K., Reddy, T., Weckesser, W., Abbasi, H., Gohlke, C., Oliphant, T.E.: Array programming with NumPy. Nature \textbf{585}(7825), 357--362 (2020). \doi{10.1038/s41586-020-2649-2}. \url{https://doi.org/10.1038/s41586-020-2649-2}
 
-\bibitem{ref_book1}
-Author, F., Author, S., Author, T.: Book title. 2nd edn. Publisher,
-Location (1999)
+\bibitem{ref_pytorch}
+Paszke, A., Gross, S., Massa, F., Lerer, A., Bradbury, J., Chanan, G., Killeen, T., Lin, Z., Gimelshein, N., Antiga, L., Desmaison, A., Kopf, A., Yang, E., DeVito, Z., Raison, M., Tejani, A., Chilamkurthy, S., Steiner, B., Fang, L., Bai, J., Chintala, S.: PyTorch: An Imperative Style, High-Performance Deep Learning Library. In: Advances in Neural Information Processing Systems 32, pp. 8024--8035. Curran Associates, Inc. (2019). \url{http://papers.neurips.cc/paper/9015-pytorch-an-imperative-style-high-performance-deep-learning-library.pdf}
 
-\bibitem{ref_proc1}
-Author, A.-B.: Contribution title. In: 9th International Proceedings
-on Proceedings, pp. 1--2. Publisher, Location (2010)
-
-\bibitem{ref_url1}
-LNCS Homepage, \url{http://www.springer.com/lncs}, last accessed 2023/10/25
+\bibitem{ref_roberta}
+Liu, Y., Ott, M., Goyal, N., Du, J., Joshi, M., Chen, D., Levy, O., Lewis, M., Zettlemoyer, L., Stoyanov, V.: RoBERTa: A Robustly Optimized BERT Pretraining Approach. arXiv preprint arXiv:1907.11692 (2019). \doi{10.48550/arXiv.1907.11692}
 
 \bibitem{ds_openturingbench}
 MLNTeam-Unical: OpenTuringBench. Hugging Face Datasets.
