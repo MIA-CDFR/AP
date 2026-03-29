@@ -8,15 +8,15 @@ from models.bert.model import BertModel
 
 
 def main() -> None:
-    df = pd.read_csv("src/data/subm1_labels_revealed.csv", sep=";")
+    df = pd.read_csv("data/subm1_labels_revealed.csv", sep=";")
     texts = df["Text"].astype(str).tolist()
     labels = df["Label"].astype(str).tolist()
 
     models = [
-        ("numpy-dnn", "models/numpy-dnn.pkl.gz", NumpyModel.load),
-        ("pytorch-dnn", "models/pytorch-dnn.pt", PyTorchModel.load),
-        ("transformer", "models/transformer.pt", TransformModel.load),
-        ("bert", "models/bert.pt", BertModel.load),
+        ("numpy-dnn", "../models/numpy-dnn.pkl.gz", NumpyModel.load),
+        ("pytorch-dnn", "../models/pytorch-dnn.pt", PyTorchModel.load),
+        ("transformer", "../models/transformer.pt", TransformModel.load),
+        ("bert", "../models/bert.pt", BertModel.load),
     ]
 
     for name, path, loader in models:

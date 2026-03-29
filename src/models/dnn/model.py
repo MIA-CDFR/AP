@@ -13,13 +13,13 @@ class NumpyModel:
     def __init__(
         self,
         n_classes: int = 5,
-        hidden_units: tuple[int, int] = (1024, 512),
-        dropout_rates: tuple[float, float] = (0.2, 0.1),
+        hidden_units: tuple[int, int, int] = (512, 256, 128),
+        dropout_rates: tuple[float, float, float] = (0.2, 0.1, 0.1),
     ):
-        if len(hidden_units) != 2:
-            raise ValueError("hidden_units must contain exactly two layer sizes")
-        if len(dropout_rates) != 2:
-            raise ValueError("dropout_rates must contain exactly two rates")
+        if len(hidden_units) != 3:
+            raise ValueError("hidden_units must contain exactly three layer sizes")
+        if len(dropout_rates) != 3:
+            raise ValueError("dropout_rates must contain exactly three rates")
 
         self.nn = NeuralNetwork()
         self.nn.add_layer(DenseLayer(hidden_units[0]))
@@ -28,6 +28,9 @@ class NumpyModel:
         self.nn.add_layer(DenseLayer(hidden_units[1]))
         self.nn.add_layer(ReLU())
         self.nn.add_layer(Dropout(dropout_rates[1]))
+        self.nn.add_layer(DenseLayer(hidden_units[2]))
+        self.nn.add_layer(ReLU())
+        self.nn.add_layer(Dropout(dropout_rates[2]))
         self.nn.add_layer(DenseLayer(n_classes))
         self.nn.add_layer(Softmax())
 
@@ -45,14 +48,14 @@ class NumpyModel:
     def create(
         cls,
         input_dim,
-        tfid_word,
-        tfid_char,
         label_map,
+        tfid_word = None,
+        tfid_char = None,
         hand_feature_names=None,
         hand_mean=None,
         hand_std=None,
-        hidden_units: tuple[int, int] = (1024, 512),
-        dropout_rates: tuple[float, float] = (0.2, 0.1),
+        hidden_units: tuple[int, int, int] = (512, 256, 128),
+        dropout_rates: tuple[float, float, float] = (0.2, 0.1, 0.1),
         loss: LossFunction = None,
     ) -> "NumpyModel":
         model = cls(
@@ -85,23 +88,33 @@ class NumpyModel:
 
     def save(self, path: str):
         try:
-            with gzip.open(path, "wb") as file:
-                pickle.dump(self, file)
+            if self.tfidf_word is not None:
+                self.tfidf_word.vocab.frequencies.clear()
+
+            if self.tfidf_char is not None:
+                self.tfidf_char.vocab.frequencies.clear()
+
+            with gzip.open(path, "wb", compresslevel=9) as file:
+                pickle.dump(self, file, protocol=pickle.HIGHEST_PROTOCOL)
         except OSError:
             with open(path, "wb") as file:
-                pickle.dump(self, file)
+                pickle.dump(self, file, protocol=pickle.HIGHEST_PROTOCOL)
 
     def predict(self, texts, y=None):
         if isinstance(texts, np.ndarray):
             features = texts.astype(np.float32, copy=False)
         elif isinstance(texts, list) and (len(texts) == 0 or isinstance(texts[0], str)):
-            if self.tfidf_word is None or self.tfidf_char is None:
-                raise ValueError("TF-IDF vectorizers are not attached to this model.")
+            feature_blocks = []
 
-            cleaned_texts = [preprocess_text(text) for text in texts]
-            normalized_texts = [normalize_text(text) for text in texts]
-            word_features = self.tfidf_word.transform(cleaned_texts)
-            char_features = self.tfidf_char.transform(normalized_texts)
+            if self.tfidf_word is not None:
+                cleaned_texts = [preprocess_text(text) for text in texts]
+                word_features = self.tfidf_word.transform(cleaned_texts)
+                feature_blocks.append(word_features.astype(np.float32, copy=False))
+
+            if self.tfidf_char is not None:
+                normalized_texts = [normalize_text(text) for text in texts]
+                char_features = self.tfidf_char.transform(normalized_texts)
+                feature_blocks.append(char_features.astype(np.float32, copy=False))
 
             # Extract hand-crafted features if available
             if self.hand_feature_names is not None:
@@ -117,9 +130,15 @@ class NumpyModel:
                 if self.hand_mean is not None and self.hand_std is not None:
                     x_hand = (x_hand - self.hand_mean) / self.hand_std
 
-                features = np.hstack([word_features, char_features, x_hand]).astype(np.float32)
+                feature_blocks.append(x_hand.astype(np.float32, copy=False))
+
+            if not feature_blocks:
+                raise ValueError("No feature extractors are attached to this model.")
+
+            if len(feature_blocks) == 1:
+                features = feature_blocks[0]
             else:
-                features = np.hstack([word_features, char_features]).astype(np.float32)
+                features = np.hstack(feature_blocks).astype(np.float32, copy=False)
         else:
             raise TypeError("X must be a numpy feature matrix or a list of raw texts.")
 
