@@ -1,11 +1,11 @@
 # Fdb version 4
-["xdvipdfmx"] 1774054620.33283 "main.xdv" "main.pdf" "main" 1774054621.35017 0
-  "main.xdv" 1774054620.2882 374032 54c840908690285c41cd406c57497f2d "xelatex"
+["xdvipdfmx"] 1774786241.52121 "main.xdv" "main.pdf" "main" 1774786242.5591 0
+  "main.xdv" 1774786241.48368 374032 e5a1178a6e5a03584530984a5db98d32 "xelatex"
   (generated)
   "main.pdf"
   (rewritten before read)
-["xelatex"] 1774054619.45417 "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/latex/main.tex" "main.xdv" "main" 1774054621.34879 0
-  "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/latex/main.tex" 1774054619.36854 44720 df418cb85c3ccaef348269e019e3ba57 ""
+["xelatex"] 1774786240.65227 "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/old/main.tex" "main.xdv" "main" 1774786242.55797 0
+  "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/old/main.tex" 1774263703.39686 44720 df418cb85c3ccaef348269e019e3ba57 ""
   "/usr/local/texlive/2026/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2026/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm" 1136768653 1528 f853c4d1b4e0550255e02831fdc8496f ""
   "/usr/local/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
@@ -174,20 +174,20 @@
   "/usr/local/texlive/2026/texmf-dist/web2c/texmf.cnf" 1770478701 43630 e9fa012910491fe5ae08a72c3c2997a7 ""
   "/usr/local/texlive/2026/texmf-var/web2c/xetex/xelatex.fmt" 1774041148 5948559 1db49bf15858a732af7d952f30185331 ""
   "/usr/local/texlive/2026/texmf.cnf" 1772409725 577 648cd9f92f9c0eac486f4c71c85cfbbe ""
-  "cover.tex" 1774042718.53507 5417 0625529b084cbd9039138bf4a5e7ffc2 ""
-  "images/c4-system-component.png" 1774040752.55005 138947 6981189bd1caf632e1bee6a68355b6a0 ""
-  "images/chat-textual.png" 1774040752.55208 411747 80d57733c298aa574e3f563eccbd95e2 ""
-  "images/chat-visual.png" 1774040752.55366 749563 e81649f692346bd77adf7d822ebb0c92 ""
-  "images/diagrama-fluxo.png" 1774040752.5544 86893 d78c474e969f662c252b0bf7651009a4 ""
-  "images/diagrama-sequencia-texto.png" 1774040752.55511 75960 52bb8a643d8056dede354020f1bd6ec7 ""
-  "images/diagrama-sequencia-visao.png" 1774040752.55604 81608 70418a5aabdffdf13e2eddf3b2dd82bf ""
-  "images/uminho.png" 1774040752.55646 17608 458cf637e131e97bfc0512575cd6365a ""
-  "main.aux" 1774054620.28666 6726 e542efa451a152294dc7420b086181c8 "xelatex"
-  "main.lof" 1774054620.28814 855 529252741c79f71e9c1db12c2af78fb2 "xelatex"
-  "main.lot" 1774054620.28817 198 996f5ac8418d83d29128e7548de1fdbe "xelatex"
+  "cover.tex" 1774263703.38134 5417 0625529b084cbd9039138bf4a5e7ffc2 ""
+  "images/c4-system-component.png" 1774263703.38216 138947 6981189bd1caf632e1bee6a68355b6a0 ""
+  "images/chat-textual.png" 1774263703.3838 411747 80d57733c298aa574e3f563eccbd95e2 ""
+  "images/chat-visual.png" 1774263703.38648 749563 e81649f692346bd77adf7d822ebb0c92 ""
+  "images/diagrama-fluxo.png" 1774263703.38716 86893 d78c474e969f662c252b0bf7651009a4 ""
+  "images/diagrama-sequencia-texto.png" 1774263703.38752 75960 52bb8a643d8056dede354020f1bd6ec7 ""
+  "images/diagrama-sequencia-visao.png" 1774263703.38793 81608 70418a5aabdffdf13e2eddf3b2dd82bf ""
+  "images/uminho.png" 1774263703.38829 17608 458cf637e131e97bfc0512575cd6365a ""
+  "main.aux" 1774786241.48274 6726 e542efa451a152294dc7420b086181c8 "xelatex"
+  "main.lof" 1774786241.48364 855 529252741c79f71e9c1db12c2af78fb2 "xelatex"
+  "main.lot" 1774786241.48365 198 996f5ac8418d83d29128e7548de1fdbe "xelatex"
   "main.nls" 0 -1 0 ""
-  "main.tex" 1774054619.36854 44720 df418cb85c3ccaef348269e019e3ba57 ""
-  "main.toc" 1774054620.28812 2696 f1613852164e7802210debe4a855b387 "xelatex"
+  "main.tex" 1774263703.39686 44720 df418cb85c3ccaef348269e019e3ba57 ""
+  "main.toc" 1774786241.48362 2696 f1613852164e7802210debe4a855b387 "xelatex"
   (generated)
   "main.aux"
   "main.lof"

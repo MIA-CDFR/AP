@@ -1,8 +1,8 @@
-PWD /Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/latex
+PWD /Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/old
 INPUT /usr/local/texlive/2026/texmf.cnf
 INPUT /usr/local/texlive/2026/texmf-dist/web2c/texmf.cnf
 INPUT /usr/local/texlive/2026/texmf-var/web2c/xetex/xelatex.fmt
-INPUT /Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/latex/main.tex
+INPUT /Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/docs/old/main.tex
 OUTPUT main.log
 INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/koma-script/scrreprt.cls
 INPUT /usr/local/texlive/2026/texmf-dist/tex/latex/koma-script/scrreprt.cls

@@ -156,7 +156,7 @@ class BertTrainer:
 
     @staticmethod
     def train(epochs: int = 3, batch_size: int = 32, learning_rate: float = 2e-5, weight_decay: float = 0.01, max_length: int = 256):
-        df = get_datasets()
+        df = get_datasets(include_subm1=True)
 
         X_texts = df["Text"].tolist()
         y_labels = df["Label"].tolist()
