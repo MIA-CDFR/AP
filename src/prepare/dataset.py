@@ -12,6 +12,12 @@ def _sample_n(df: pd.DataFrame, n_lines: int, random_state: int = 42) -> pd.Data
     return df.sample(n_lines, random_state=random_state).reset_index(drop=True)
 
 
+def _truncate_text_chars(text: str, max_chars: int = 1000) -> str:
+    if not isinstance(text, str):
+        return ""
+    return text[:max_chars]
+
+
 def get_prof_dataset(n_lines: int = 125) -> pd.DataFrame:
     project_root = Path(__file__).resolve().parents[1]
     dataset_path = project_root / "data" / "dataset-exemplos.csv"
@@ -206,8 +212,9 @@ def get_datasets(
 
     df = pd.concat(parts, ignore_index=True)
     df = df[df["Label"].isin(TARGET_LABELS)].reset_index(drop=True)
+    df["Text"] = df["Text"].apply(lambda x: _truncate_text_chars(x, max_chars=1000))
 
     if balance:
         df = _balance_by_label(df, target_per_class=target_per_class, labels=TARGET_LABELS)
 
-    return df
+    return df.sample(frac=1.0, random_state=42).reset_index(drop=True)

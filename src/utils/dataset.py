@@ -49,12 +49,25 @@ def build_vocab(texts: list[str], min_freq: int = 2) -> dict[str, int]:
     return stoi
 
 
-def build_vectorizer() -> TfidfVectorizer:
+def build_vectorizer(type_char: bool = False) -> TfidfVectorizer:
+    if type_char:
+        return TfidfVectorizer(
+            max_features=12000,
+            ngram_range=(2,5),
+            min_df=5,
+            analyzer="char",
+            sublinear_tf=True,
+        )
+
     return TfidfVectorizer(
         max_features=12000,
-        ngram_range=(1,2),
+        ngram_range=(1,3),
         min_df=5,
-        stop_words="english"
+        max_df=0.8,
+        # stop_words="english",
+        analyzer="word",
+        sublinear_tf=True,
+        stop_words=None,
     )
 
 def extract_features(raw_text, clean_text):

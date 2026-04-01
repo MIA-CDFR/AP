@@ -5,6 +5,7 @@ from rich.table import Table
 from rich.progress import Progress, BarColumn, TextColumn, TimeElapsedColumn
 from rich.live import Live
 from rich import box
+from scipy.sparse import hstack
 
 from sklearn.model_selection import train_test_split
 from torch import nn
@@ -65,22 +66,51 @@ class EarlyStopping:
 class PyTorchTrainer:
     @staticmethod
     def train(epochs: int = 10, batch_size: int = 32, learning_rate: float = 0.001):
-        df = get_datasets(submission_round=1, balance=True, target_per_class=5000)
+        df = get_datasets(submission_round=3, balance=True, target_per_class=5000)
 
         X_texts = df["Text"].tolist()
         y_labels = df["Label"].tolist()
 
         unique_labels = sorted(list(set(y_labels)))
         label_map = {label: i for i, label in enumerate(unique_labels)}
+        if "Human" not in label_map:
+            raise ValueError("Expected 'Human' label for binary head training.")
+
+        human_class_index = label_map["Human"]
+        ai_class_indices = sorted(
+            class_index for label, class_index in label_map.items() if label != "Human"
+        )
+        class_to_family_tensor = torch.full(
+            (len(unique_labels),),
+            -1,
+            dtype=torch.long,
+            device=torch_utils.device,
+        )
+        for family_index, class_index in enumerate(ai_class_indices):
+            class_to_family_tensor[class_index] = family_index
+        family_to_class_tensor = torch.tensor(
+            ai_class_indices,
+            dtype=torch.long,
+            device=torch_utils.device,
+        )
 
         y_labels = [label_map[label] for label in y_labels]
 
         X_train, X_eval, y_train, y_eval = train_test_split(X_texts, y_labels, test_size=0.2, random_state=42, stratify=y_labels)
 
-        vector = build_vectorizer()
-        vector.fit(X_train)
-        X_train = vector.transform(X_train)
-        X_eval = vector.transform(X_eval)
+        vector_word = build_vectorizer()
+        vector_char = build_vectorizer(type_char=True)
+
+        vector_word.fit(X_train)
+        vector_char.fit(X_train)
+
+        X_train_word = vector_word.transform(X_train)
+        X_eval_word = vector_word.transform(X_eval)
+        X_train_char = vector_char.transform(X_train)
+        X_eval_char = vector_char.transform(X_eval)
+
+        X_train = hstack([X_train_word, X_train_char], format="csr")
+        X_eval = hstack([X_eval_word, X_eval_char], format="csr")
 
         train_dataset = TextDataset(X_train, y_train)
         eval_dataset = TextDataset(X_eval, y_eval)
@@ -88,9 +118,15 @@ class PyTorchTrainer:
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
         eval_loader = DataLoader(eval_dataset, batch_size=batch_size, shuffle=False)
 
-        model = PyTorchModel.create(input_dim=X_train.shape[1], label_map=label_map, vector=vector)
+        model = PyTorchModel.create(
+            input_dim=X_train.shape[1],
+            label_map=label_map,
+            vector_word=vector_word,
+            vector_char=vector_char,
+        )
 
-        criterion = nn.CrossEntropyLoss()
+        binary_criterion = nn.BCEWithLogitsLoss()
+        family_criterion = nn.CrossEntropyLoss()
 
         optimizer = Adam(model.model.parameters(), lr=learning_rate)
         writer = SummaryWriter()
@@ -138,13 +174,30 @@ class PyTorchTrainer:
                     y = batch["labels"].to(torch_utils.device)
 
                     optimizer.zero_grad()
-                    outputs = model.model(X)
-                    loss = criterion(outputs, y)
+                    binary_logits, family_logits = model.model(X)
+
+                    binary_targets = (y != human_class_index).float().unsqueeze(1)
+                    loss_binary = binary_criterion(binary_logits, binary_targets)
+
+                    ai_mask = y != human_class_index
+                    if ai_mask.any():
+                        family_targets = class_to_family_tensor[y[ai_mask]]
+                        loss_family = family_criterion(family_logits[ai_mask], family_targets)
+                    else:
+                        loss_family = torch.tensor(0.0, device=torch_utils.device)
+
+                    loss = loss_binary + loss_family
                     loss.backward()
                     optimizer.step()
 
                     total_loss += loss.item()
-                    preds = outputs.argmax(dim=1)
+
+                    binary_preds = torch.sigmoid(binary_logits).squeeze(1) >= 0.5
+                    family_preds = family_logits.argmax(dim=1)
+                    preds = torch.full_like(y, human_class_index)
+                    if binary_preds.any():
+                        preds[binary_preds] = family_to_class_tensor[family_preds[binary_preds]]
+
                     total_correct += (preds == y).sum().item()
                     total_samples += y.size(0)
 
@@ -162,9 +215,25 @@ class PyTorchTrainer:
                         X = batch["encoded"].to(torch_utils.device)
                         y = batch["labels"].to(torch_utils.device)
 
-                        outputs = model.model(X)
-                        loss = criterion(outputs, y)
-                        preds = outputs.argmax(dim=1)
+                        binary_logits, family_logits = model.model(X)
+
+                        binary_targets = (y != human_class_index).float().unsqueeze(1)
+                        loss_binary = binary_criterion(binary_logits, binary_targets)
+
+                        ai_mask = y != human_class_index
+                        if ai_mask.any():
+                            family_targets = class_to_family_tensor[y[ai_mask]]
+                            loss_family = family_criterion(family_logits[ai_mask], family_targets)
+                        else:
+                            loss_family = torch.tensor(0.0, device=torch_utils.device)
+
+                        loss = loss_binary + loss_family
+
+                        binary_preds = torch.sigmoid(binary_logits).squeeze(1) >= 0.5
+                        family_preds = family_logits.argmax(dim=1)
+                        preds = torch.full_like(y, human_class_index)
+                        if binary_preds.any():
+                            preds[binary_preds] = family_to_class_tensor[family_preds[binary_preds]]
 
                         eval_loss += loss.item()
                         eval_correct += (preds == y).sum().item()
@@ -187,7 +256,7 @@ class PyTorchTrainer:
                 writer.add_scalar("Loss/train", avg_train_loss, epoch)
                 writer.add_scalar("Loss/val", avg_val_loss, epoch)
                 writer.add_scalar("Accuracy/train", train_acc, epoch)
-                writer.add_scalar("Accuracy/test", val_acc, epoch)
+                writer.add_scalar("Accuracy/val", val_acc, epoch)
 
                 progress.update(
                     epoch_task,
@@ -208,7 +277,9 @@ class PyTorchTrainer:
             "model_state": model.model.state_dict(),
             "label_map": label_map,
             "input_dim": X_train.shape[1],
-            "vector": vector,
+            "vector": vector_word,
+            "vector_word": vector_word,
+            "vector_char": vector_char,
         }, main_folder / "pytorch-dnn.pt")
 
         final_preds = np.array(all_preds, dtype=np.int64)

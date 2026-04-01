@@ -126,7 +126,7 @@ class TrainNumpy:
             )
             use_balanced_sampling = False
 
-        df = get_datasets(submission_round=1, balance=True, target_per_class=5000)
+        df = get_datasets(submission_round=3, balance=True, target_per_class=5000)
 
         df["Text_clean"] = df["Text"].apply(preprocess_text)
         X_word_texts = df["Text_clean"].tolist()

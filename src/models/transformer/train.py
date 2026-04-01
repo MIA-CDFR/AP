@@ -113,7 +113,7 @@ class TransformerTrainer:
     dropout: float = 0.2
     @staticmethod
     def train(epochs: int = 3, batch_size: int = 32, learning_rate: float = 2e-4, weight_decay: float = 0.01):
-        df = get_datasets(submission_round=1, balance=True, target_per_class=5000)
+        df = get_datasets(submission_round=3, balance=True, target_per_class=5000)
 
         X_texts = df["Text"].tolist()
         y_labels = df["Label"].tolist()

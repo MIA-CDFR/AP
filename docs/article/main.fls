@@ -99,4 +99,7 @@ INPUT ./images/pytorch_dnn_train.png
 INPUT ./images/transformer_train.png
 INPUT ./images/transformer_train.png
 INPUT ./images/transformer_train.png
+INPUT ./images/bert_train.png
+INPUT ./images/bert_train.png
+INPUT ./images/bert_train.png
 INPUT main.aux
