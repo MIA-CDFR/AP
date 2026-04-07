@@ -1,7 +1,8 @@
 import torch
+from torch import nn
 
 from sklearn.model_selection import train_test_split
-from transformers import Trainer, TrainingArguments
+from transformers import Trainer, TrainingArguments, TrainerCallback
 from torch.utils.data import Dataset
 
 from prepare.dataset import get_datasets
@@ -25,6 +26,65 @@ class TextClassificationDataset(Dataset):
         item = {k: v[idx] for k, v in self.encodings.items()}
         item["labels"] = torch.tensor(self.labels[idx], dtype=torch.long)
         return item
+
+
+class EpochMetricsCallback(TrainerCallback):
+    def __init__(self):
+        self.criterion = nn.CrossEntropyLoss()
+        self.history = {
+            "epoch": [],
+            "train_loss": [],
+            "val_loss": [],
+            "train_acc": [],
+            "val_acc": [],
+        }
+
+    def _compute_metrics(self, model, dataloader):
+        model.eval()
+        model_device = next(model.parameters()).device
+        total_loss = 0.0
+        total_correct = 0
+        total_samples = 0
+
+        with torch.no_grad():
+            for batch in dataloader:
+                input_ids = batch["input_ids"].to(model_device)
+                attention_mask = batch["attention_mask"].to(model_device)
+                labels = batch["labels"].to(model_device)
+
+                outputs = model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    labels=labels,
+                )
+                logits = outputs.logits if hasattr(outputs, "logits") else outputs
+                loss = outputs.loss if hasattr(outputs, "loss") and outputs.loss is not None else self.criterion(logits, labels)
+
+                preds = logits.argmax(dim=1)
+                total_loss += loss.item()
+                total_correct += (preds == labels).sum().item()
+                total_samples += labels.size(0)
+
+        avg_loss = total_loss / max(1, len(dataloader))
+        acc = total_correct / max(1, total_samples)
+        return avg_loss, acc
+
+    def on_epoch_end(self, args, state, control, **kwargs):
+        model = kwargs.get("model")
+        train_dataloader = kwargs.get("train_dataloader")
+        eval_dataloader = kwargs.get("eval_dataloader")
+
+        if model is None or train_dataloader is None or eval_dataloader is None:
+            return
+
+        train_loss, train_acc = self._compute_metrics(model, train_dataloader)
+        val_loss, val_acc = self._compute_metrics(model, eval_dataloader)
+
+        self.history["epoch"].append(float(state.epoch) if state.epoch is not None else len(self.history["epoch"]) + 1)
+        self.history["train_loss"].append(train_loss)
+        self.history["val_loss"].append(val_loss)
+        self.history["train_acc"].append(train_acc)
+        self.history["val_acc"].append(val_acc)
 
 
 class BertTrainer:
@@ -156,7 +216,7 @@ class BertTrainer:
 
     @staticmethod
     def train(epochs: int = 3, batch_size: int = 32, learning_rate: float = 2e-5, weight_decay: float = 0.01, max_length: int = 256):
-        df = get_datasets(include_subm1=True)
+        df = get_datasets(submission_round=3, balance=True, target_per_class=5000)
 
         X_texts = df["Text"].tolist()
         y_labels = df["Label"].tolist()
@@ -198,12 +258,15 @@ class BertTrainer:
             greater_is_better=True,
         )
 
+        metrics_callback = EpochMetricsCallback()
+
         trainer = Trainer(
             model=model.model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             compute_metrics=compute_metrics_logits,
+            callbacks=[metrics_callback],
         )
 
         trainer.train()
@@ -221,6 +284,41 @@ class BertTrainer:
         )
 
         print("Model saved to", main_folder / "bert.pt")
+
+        return metrics_callback.history
+
+    @staticmethod
+    def plot_history(history: dict):
+        import matplotlib.pyplot as plt
+
+        epochs = history.get("epoch", list(range(1, len(history.get("train_loss", [])) + 1)))
+
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+        ax1.plot(epochs, history["train_loss"], label="train", color="#C44E52", linewidth=2)
+        ax1.plot(epochs, history["val_loss"], label="test/val", color="#4C72B0", linewidth=2, linestyle="--")
+        ax1.set_title("Loss")
+        ax1.set_xlabel("Epoch")
+        ax1.set_ylabel("Loss")
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+
+        ax2.plot(epochs, history["train_acc"], label="train", color="#55A868", linewidth=2)
+        ax2.plot(epochs, history["val_acc"], label="test/val", color="#8172B2", linewidth=2, linestyle="--")
+        ax2.set_title("Accuracy")
+        ax2.set_xlabel("Epoch")
+        ax2.set_ylabel("Accuracy")
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+
+        plt.suptitle("BERT - Training History", fontweight="bold")
+        plt.tight_layout()
+        output_dir = main_folder / ".." / "docs" / "article" / "images"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "bert_train.png"
+        plt.savefig(output_path, dpi=200, bbox_inches="tight")
+        print("History plot saved to", output_path)
+        plt.show()
 
     @staticmethod
     def plot_architecture(max_length: int = 256):
@@ -396,4 +494,5 @@ class BertTrainer:
         plt.show()
 
 if __name__ == "__main__":
-    BertTrainer.train()
+    history = BertTrainer.train()
+    BertTrainer.plot_history(history)

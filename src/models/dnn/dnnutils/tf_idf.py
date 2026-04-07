@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.sparse import csr_matrix, diags
 
 from collections import Counter
 from collections.abc import Iterable
@@ -68,27 +69,43 @@ class TFIDF:
         self.idf = (np.log((1 + n_docs) / (1 + df)) + 1.0).astype(np.float32)
         return self
 
-    def transform(self, corpus: Iterable[str]) -> np.ndarray:
+    def transform(self, corpus: Iterable[str]) -> csr_matrix:
+        """Returns a sparse CSR matrix (n_docs × vocab_size) to avoid OOM on large corpora."""
         if self.idf is None:
             raise ValueError("TFIDF must be fitted before calling transform")
 
         documents = list(corpus)
-        tf = np.zeros((len(documents), len(self.vocab)), dtype=np.float32)
+        n_docs = len(documents)
+        n_vocab = len(self.vocab)
 
+        rows, cols, data = [], [], []
         for row_index, doc in enumerate(documents):
             terms = self._ngrams(doc)
-            for term in terms:
+            if not terms:
+                continue
+            term_counts: Counter[str] = Counter(terms)
+            n_terms_in_doc = len(terms)
+            for term, count in term_counts.items():
                 if term in self.vocab:
-                    tf[row_index, self.vocab[term]] += np.float32(1.0)
-            if terms:
-                tf[row_index] /= len(terms)
+                    rows.append(row_index)
+                    cols.append(self.vocab[term])
+                    data.append(np.float32(count) / np.float32(n_terms_in_doc))
 
-        tfidf = (tf * self.idf).astype(np.float32)
-        norms = np.linalg.norm(tfidf, axis=1, keepdims=True)
+        if not data:
+            return csr_matrix((n_docs, n_vocab), dtype=np.float32)
+
+        tf = csr_matrix((data, (rows, cols)), shape=(n_docs, n_vocab), dtype=np.float32)
+
+        # Apply IDF (element-wise per column)
+        tfidf = tf.multiply(self.idf)
+
+        # L2-normalise each row without creating a dense intermediate
+        norms = np.asarray(tfidf.power(2).sum(axis=1)).ravel()
         norms[norms == 0] = 1.0
-        return (tfidf / norms).astype(np.float32)
+        row_scale = diags(1.0 / np.sqrt(norms), dtype=np.float32)
+        return (row_scale @ tfidf).astype(np.float32)
 
-    def fit_transform(self, corpus: Iterable[str]) -> np.ndarray:
+    def fit_transform(self, corpus: Iterable[str]) -> csr_matrix:
         documents = list(corpus)
         self.fit(documents)
         return self.transform(documents)

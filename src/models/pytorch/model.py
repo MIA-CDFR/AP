@@ -1,4 +1,5 @@
 import torch
+from scipy.sparse import hstack
 
 from models.pytorch.classifiers import DNNClassifier
 
@@ -12,9 +13,18 @@ class PyTorchModel:
         self.inverse_label_map = None
         self.stoi = None
         self.seq_len = None
+        self.vector = None
+        self.vector_word = None
+        self.vector_char = None
 
     @classmethod
-    def create(cls, input_dim, label_map: dict[int, str], vector) -> "PyTorchModel":
+    def create(
+        cls,
+        input_dim,
+        label_map: dict[int, str],
+        vector_word,
+        vector_char=None,
+    ) -> "PyTorchModel":
         dnn_model = cls()
         dnn_model.model = DNNClassifier(
             input_dim,
@@ -22,7 +32,9 @@ class PyTorchModel:
         ).to(torch_utils.device)
         dnn_model.label_map = label_map
         dnn_model.inverse_label_map = {v: k for k, v in label_map.items()} if label_map else None
-        dnn_model.vector = vector
+        dnn_model.vector = vector_word
+        dnn_model.vector_word = vector_word
+        dnn_model.vector_char = vector_char
         return dnn_model
 
     @classmethod
@@ -35,6 +47,8 @@ class PyTorchModel:
         dnn_model.label_map = checkpoint["label_map"]
         dnn_model.inverse_label_map = {v: k for k, v in checkpoint["label_map"].items()} if checkpoint["label_map"] else None
         dnn_model.vector = checkpoint.get("vector", None)
+        dnn_model.vector_word = checkpoint.get("vector_word", dnn_model.vector)
+        dnn_model.vector_char = checkpoint.get("vector_char", None)
         dnn_model.model.load_state_dict(checkpoint["model_state"])
         return dnn_model
     
@@ -50,13 +64,51 @@ class PyTorchModel:
     def predict(self, texts, labels=None):
         self.model.eval()
 
-        encoded = self.vector.transform(texts).toarray()
+        if self.vector_word is not None:
+            encoded_word = self.vector_word.transform(texts)
+            if self.vector_char is not None:
+                encoded_char = self.vector_char.transform(texts)
+                encoded = hstack([encoded_word, encoded_char], format="csr").toarray()
+            else:
+                encoded = encoded_word.toarray()
+        else:
+            encoded = self.vector.transform(texts).toarray()
+
         input_ids = torch.tensor(encoded, dtype=torch.float).to(torch_utils.device)
 
         with torch.no_grad():
             outputs = self.model(input_ids)
-            logits = outputs.logits if hasattr(outputs, "logits") else outputs
-            preds = logits.argmax(dim=1).cpu().tolist()
+            if isinstance(outputs, tuple) and len(outputs) == 2:
+                if self.label_map is None or "Human" not in self.label_map:
+                    raise ValueError("Expected 'Human' in label_map for hierarchical DNN prediction.")
+
+                binary_logits, family_logits = outputs
+                human_class_index = self.label_map["Human"]
+                ai_class_indices = sorted(
+                    class_index
+                    for label, class_index in self.label_map.items()
+                    if label != "Human"
+                )
+                family_to_class_tensor = torch.tensor(
+                    ai_class_indices,
+                    dtype=torch.long,
+                    device=input_ids.device,
+                )
+
+                binary_preds = torch.sigmoid(binary_logits).squeeze(1) >= 0.5
+                family_preds = family_logits.argmax(dim=1)
+                preds_tensor = torch.full(
+                    (input_ids.shape[0],),
+                    human_class_index,
+                    dtype=torch.long,
+                    device=input_ids.device,
+                )
+                if binary_preds.any():
+                    preds_tensor[binary_preds] = family_to_class_tensor[family_preds[binary_preds]]
+                preds = preds_tensor.cpu().tolist()
+            else:
+                logits = outputs.logits if hasattr(outputs, "logits") else outputs
+                preds = logits.argmax(dim=1).cpu().tolist()
 
         pred_labels = [self.inverse_label_map[p] for p in preds] if self.inverse_label_map else preds
 

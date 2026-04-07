@@ -1,6 +1,7 @@
 import pickle
 import gzip
 import numpy as np
+import scipy.sparse
 
 from models.dnn.classifiers import NeuralNetwork
 from models.dnn.classifiers.layers import DenseLayer, ReLU, Dropout, Softmax
@@ -138,11 +139,26 @@ class NumpyModel:
             if len(feature_blocks) == 1:
                 features = feature_blocks[0]
             else:
-                features = np.hstack(feature_blocks).astype(np.float32, copy=False)
+                sparse_blocks = []
+                for block in feature_blocks:
+                    if scipy.sparse.issparse(block):
+                        sparse_blocks.append(block.astype(np.float32))
+                    else:
+                        sparse_blocks.append(scipy.sparse.csr_matrix(np.asarray(block, dtype=np.float32)))
+                features = scipy.sparse.hstack(sparse_blocks, format="csr").astype(np.float32)
         else:
             raise TypeError("X must be a numpy feature matrix or a list of raw texts.")
 
-        predictions_probs = self.nn.forward_propagation(features, training=False)
+        if scipy.sparse.issparse(features):
+            batch_size = 512
+            probs_parts = []
+            for start in range(0, features.shape[0], batch_size):
+                chunk = features[start : start + batch_size].toarray()
+                probs_parts.append(self.nn.forward_propagation(chunk, training=False))
+            predictions_probs = np.vstack(probs_parts) if probs_parts else np.empty((0, len(self.inverse_label_map)), dtype=np.float32)
+        else:
+            predictions_probs = self.nn.forward_propagation(features, training=False)
+
         predictions = predictions_probs.argmax(axis=1)
 
         if y is not None:

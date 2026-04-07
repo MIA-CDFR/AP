@@ -1,208 +1,149 @@
-# AP - Recurrent Neural Network Project
+# AP - Text Classification (MIA/AP)
 
-**Projeto Aprendizagem Profunda (AP) - Universidade do Minho @2026 - Grupo 8**
+Projeto de Aprendizagem Profunda (Universidade do Minho, Grupo 8) para classificacao de texto com multiplas abordagens:
 
-| Elemento | Informação |
-|----------|-----------|
-| PG11605 | Carlos da Mota Bergueira |
-| PG59999 | Diego Jefferson Mendes Silva |
-| PG42201 | Filipa Araújo Pereira |
-| PG7942 | Rui Manuel Martins Marques Rodrigues |
+- NumPy DNN
+- PyTorch DNN
+- Transformer custom
+- BERT/RoBERTa fine-tuning
 
-## Introduction
+## Team
 
-This project trains a custom feedforward neural network for text classification. The current pipeline combines three feature sources:
-
-- word-level TF-IDF
-- character-level TF-IDF
-- handcrafted text features
-
-The trained model can be saved together with its preprocessing artifacts and later reused for evaluation or single-text inference.
-
-## Project Structure
-
-```text
-AP/
-├── src/
-│   ├── dnn/
-│   │   ├── main.py
-│   │   ├── nn.py
-│   │   ├── layers/
-│   │   ├── data/
-│   │   ├── prepare/
-│   │   ├── linear-model.pkl
-│   │   ├── rnn-model.pkl
-│   │   ├── run_model.ipynb
-│   │   └── run_model-linear.ipynb
-│   └── pytorch/
-│       ├── main.py
-│       ├── models/
-│       ├── prepare/
-│       ├── data/
-│       ├── model.pth
-│       └── run-model.ipynb
-├── Subm1/
-│   ├── subm1-g8-MIA-A.csv
-│   ├── subm1-g8-MIA-A.ipynb
-│   ├── subm1-g8-MIA-B.csv
-│   ├── subm1-g8-MIA-B.ipynb
-├── pyproject.toml
-├── uv.lock
-└── README.md
-```
+| Aluno | Nome |
+|----------|------------|
+| PG11605  | Carlos da Mota Bergueira |
+| PG59999  | Diego Jefferson Mendes Silva |
+| PG42201  | Filipa Araujo Pereira |
+| PG7942   | Rui Manuel Martins Marques Rodrigues |
 
 ## Setup
 
-### Prerequisites
+Prerequisites:
 
 - Python 3.12+
-- `pip`
+- pip
 
-### Installation
+Install:
 
 ```bash
-cd AP
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
 
-## Current RNN Workflow
+## Quick Overview
 
-The current RNN usage is class-based and centered on `DatasetLoader` and `Model`.
+### Root files
 
-### 1. Load datasets and build features
+- `pyproject.toml`: project metadata and dependencies.
+- `requirements.txt`: pinned dependency export.
+- `README.md`: this guide.
 
-`DatasetLoader.load_datasets()`:
+### Main folders (excluding folders starting with `_`)
 
-- downloads and merges the configured datasets
-- preprocesses text
-- fits the word and char TF-IDF vectorizers
-- extracts handcrafted features
-- standardizes handcrafted features
-- exposes final train/test matrices in `X_train` and `X_test`
+- `src/`: core codebase for dataset preparation, model training, and evaluation scripts.
+- `src/models/`: the 4 model implementations and notebooks used during experiments.
+- `src/prepare/`: dataset assembly utilities (`get_datasets`) and preprocessing pipeline.
+- `src/utils/`: shared helpers for training, dataset processing, metrics, and device/model utilities.
+- `src/data/`: local CSV datasets (`ag_news`, `subm1`, `subm2`, `subm3`, revealed labels, examples).
+- `models/`: trained model artifacts (`bert.pt`, `pytorch-dnn.pt`, `transformer.pt`, and NumPy model files).
+	- `models/results/`: evaluation outputs and transformer training checkpoints.
+- `docs/article/`: report assets (LaTeX source and images).
+- `Subm1/`, `Subm2/`, `Subm3/`: project submission deliverables (CSV predictions + notebooks) for each of the three rounds.
 
-### 2. Create and train the model
+## Training The Four Models
 
-```python
-from dnn.prepare.dataset import DatasetLoader
-from dnn.prepare.model import Model
-
-datasets = DatasetLoader.load_datasets()
-model = Model(n_classes=len(datasets.class_names))
-
-model.train(
-    datasets.X_train,
-    datasets.y_train,
-    datasets.X_test,
-    datasets.y_test,
-    epochs=50,
-    batch_size=32,
-)
-```
-
-### 3. Attach preprocessors before saving
-
-This step is required so the saved model can also process raw text later.
-
-```python
-model.attach_preprocessors(datasets)
-```
-
-### 4. Save and load the trained model
-
-```python
-model.save("./rnn-model.pkl")
-loaded_model = Model.load("./rnn-model.pkl")
-```
-
-### 5. Evaluate on the test set
-
-When using precomputed feature matrices, call `predict` with `X_test` and `y_test`.
-
-```python
-predicted_labels = loaded_model.predict(datasets.X_test, datasets.y_test)
-```
-
-This prints:
-
-- predicted label distribution
-- true label distribution
-- test accuracy
-- confusion matrix
-
-### 6. Predict a single text
-
-After `attach_preprocessors(...)` and `load(...)`, the model can classify raw text directly.
-
-```python
-example_text = "This is an example input text to classify."
-predicted_label = loaded_model.predict_text(example_text)
-print(predicted_label)
-```
-
-## Current Entry Point
-
-Run the full train-save-load-evaluate flow with:
+Important: run training commands from `src/`, because model save paths are defined relative to that working directory.
 
 ```bash
-python src/dnn/main.py
+cd src
 ```
 
-To train specifically with the revealed submission labels file (`src/dnn/data/subm1_labels_revealed.csv`), use:
+### 1) NumPy DNN (`models/numpy-dnn.pkl.gz`)
 
 ```bash
-python src/dnn/main.py --dataset revealed
+python -c "from models.dnn.train import TrainNumpy; h = TrainNumpy.train(); print('epochs:', len(h['loss']))"
 ```
 
-To force training/evaluation on the full revealed set (memorization mode):
+What it does briefly:
+
+- builds word TF-IDF (+ optional char/features)
+- trains a feedforward DNN implemented in NumPy
+- applies early stopping
+- saves to `../models/numpy-dnn.pkl.gz`
+
+### 2) PyTorch DNN (`models/pytorch-dnn.pt`)
 
 ```bash
-python src/dnn/main.py --dataset revealed --fit-all
+python -c "from models.pytorch.train import PyTorchTrainer; h = PyTorchTrainer.train(); print('epochs:', len(h['train_loss']))"
 ```
 
-To use a custom revealed CSV path:
+What it does briefly:
+
+- builds word + char TF-IDF features
+- trains a PyTorch classifier with Adam and early stopping
+- saves to `../models/pytorch-dnn.pt`
+
+### 3) Transformer custom (`models/transformer.pt`)
 
 ```bash
-python src/dnn/main.py --dataset revealed --revealed-path /path/to/subm1_labels_revealed.csv
+python -c "from models.transformer.train import TransformerTrainer; h = TransformerTrainer.train(); print('epochs:', len(h['epoch']))"
 ```
 
-The current `src/dnn/main.py` flow is:
+What it does briefly:
 
-1. load datasets with `DatasetLoader`
-2. create a `Model`
-3. train it on `X_train` / `y_train`
-4. attach TF-IDF and handcrafted-feature preprocessors
-5. save the model to `./rnn-model.pkl`
-6. reload the model from disk
-7. evaluate on `X_test` / `y_test`
+- tokenizes text with Hugging Face tokenizer
+- trains the custom transformer classifier with `Trainer`
+- saves checkpoint info/state dict to `../models/transformer.pt`
 
-## Main Modules
+### 4) BERT/RoBERTa fine-tuning (`models/bert.pt`)
 
-- `prepare/dataset.py`: dataset loading, merging, label encoding, train/test split, vectorization
-- `prepare/feature.py`: handcrafted feature engineering and feature assembly
-- `prepare/tf_idf.py`: TF-IDF vectorizer using the custom `Vocab`
-- `prepare/vocab.py`: reusable vocabulary abstraction for token/index mapping
-- `prepare/model.py`: high-level wrapper around the neural network with training, prediction, confusion matrix, and persistence
-- `nn.py` and `layers/`: low-level neural network implementation
+```bash
+python -c "from models.bert.train import BertTrainer; h = BertTrainer.train(); print('epochs:', len(h['epoch']))"
+```
 
-## TF-IDF and Vocabulary
+What it does briefly:
 
-The TF-IDF module uses a dedicated vocabulary class instead of a raw dictionary.
+- loads `roberta-base`
+- fine-tunes for multiclass classification via Hugging Face `Trainer`
+- saves to `../models/bert.pt`
+
+## Quick Intro: How To Use Trained Models
+
+### Evaluate all 4 models on known labeled sets
+
+Run from `src/`:
+
+```bash
+python eval_dataset_exemplo_models.py
+python eval_subm1_models.py
+python eval_subm2_models.py
+```
+
+Outputs are written under `../models/results/`.
+
+### Predict from Python
+
+Example for BERT:
 
 ```python
-from dnn.prepare.tf_idf import TFIDF
+from models.bert.model import BertModel
 
-texts = ["hello world", "hello machine learning"]
-vectorizer = TFIDF(analyzer="word", ngram_range=(1, 2))
-matrix = vectorizer.fit_transform(texts)
-
-print(vectorizer.token_to_index)
-print(matrix.shape)
+model = BertModel.load("../models/bert.pt")
+preds = model.predict(["Example text to classify", "Another sentence"])
+print(preds)
 ```
 
-## Notes
+The same usage pattern exists for:
 
-- `Model.predict(...)` accepts either a precomputed `numpy` feature matrix or raw text as a `pandas.Series` / `list[str]`
-- `Model.predict_text(...)` requires attached preprocessors
-- the saved pickle model includes the neural network and preprocessing artifacts attached to the `Model` instance
+- `models.dnn.model.NumpyModel`
+- `models.pytorch.model.PyTorchModel`
+- `models.transformer.model.TransformModel`
+
+## Notes About Submissions
+
+- `Subm1/`: artifacts for submission round 1.
+- `Subm2/`: artifacts for submission round 2.
+- `Subm3/`: artifacts for submission round 3.
+
+Each folder contains at least one notebook (`.ipynb`) and exported prediction file(s) (`.csv`) used in delivery.

@@ -1,8 +1,11 @@
 \relax 
-\@writefile{toc}{\contentsline {title}{Classificador de Textos com Redes Neurais Profundas}{1}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {title}{Análise Comparativa de Arquiteturas para Classificação de Textos}{1}{}\protected@file@percent }
 \@writefile{toc}{\authcount {4}}
 \@writefile{toc}{\contentsline {author}{Carlos da Mota Bergueira \and Diego Jefferson Mendes Silva \and Filipa Araújo Pereira \and Rui Manuel Martins Marques Rodrigues}{1}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {1}Introdução}{1}{}\protected@file@percent }
+\citation{ref_numpy}
+\citation{ref_pytorch}
+\citation{ref_roberta}
 \citation{ds_openturingbench}
 \citation{ds_dahoas}
 \@writefile{toc}{\contentsline {section}{\numberline {2}Seleção de Datasets e Preprocessamento}{2}{}\protected@file@percent }
@@ -10,43 +13,63 @@
 \citation{ds_artem9k}
 \citation{ds_anthropic}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Dataset de Validação}{3}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Distribuição das classes no conjunto de treino e teste.}}{4}{}\protected@file@percent }
+\newlabel{distribuicao_classes}{{1}{4}{}{figure.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Preprocessamento}{4}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{NumPy DNN}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{PyTorch DNN}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{Transformer (Tokenizador Genérico)}{4}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{BERT (Fine-tuning)}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Formulação Matemática}{5}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{TF-IDF e normalização}{5}{}\protected@file@percent }
+\citation{ref_roberta}
+\citation{ref_roberta}
+\citation{ref_roberta}
+\citation{ref_roberta}
+\@writefile{toc}{\contentsline {subsubsection}{PyTorch DNN}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{Transformer (Tokenizador Genérico)}{5}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{RoBERTa (Fine-tuning)}{5}{}\protected@file@percent }
+\citation{ref_roberta}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Formulação Matemática}{6}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{TF-IDF e normalização}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{DNNs (NumPy e PyTorch)}{6}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{Transformer e RoBERTa}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {3}Arquiteturas de Modelos}{6}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}NumPy DNN}{6}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparação de desempenho dos modelos no conjunto de avaliação.}}{7}{}\protected@file@percent }
-\newlabel{tab:comparacao_modelos}{{1}{7}{}{table.1}{}}
+\citation{ref_roberta}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Arquiteturas de Modelos}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}NumPy DNN}{7}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}PyTorch DNN}{7}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Transformer Generico}{7}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}BERT Fine-tuning (RoBERTa-base)}{7}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Treino e Avaliação}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Transformer Genérico}{7}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4}RoBERTa Fine-tuning (RoBERTa-base)}{7}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparação de desempenho dos modelos no conjunto de avaliação.}}{8}{}\protected@file@percent }
+\newlabel{tab:comparacao_modelos}{{1}{8}{}{table.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Treino e Avaliação}{8}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.1}NumPy DNN}{8}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Resultados do treino do modelo NumPy DNN.}}{8}{}\protected@file@percent }
-\newlabel{numpy_dnn_train}{{1}{8}{}{figure.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Resultados do treino do modelo NumPy DNN.}}{8}{}\protected@file@percent }
+\newlabel{numpy_dnn_train}{{2}{8}{}{figure.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2}PyTorch DNN}{8}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Transformer Genérico}{8}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Resultados do treino do modelo PyTorch DNN.}}{9}{}\protected@file@percent }
-\newlabel{pytorch_dnn_train}{{2}{9}{}{figure.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Resultados do treino do modelo Transformer Genérico.}}{9}{}\protected@file@percent }
-\newlabel{transformer_train}{{3}{9}{}{figure.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}BERT Fine-tuning (RoBERTa-base)}{10}{}\protected@file@percent }
+\citation{ref_roberta}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Resultados do treino do modelo PyTorch DNN.}}{9}{}\protected@file@percent }
+\newlabel{pytorch_dnn_train}{{3}{9}{}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Transformer Genérico}{9}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Resultados do treino do modelo Transformer Genérico.}}{9}{}\protected@file@percent }
+\newlabel{transformer_train}{{4}{9}{}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}RoBERTa Fine-tuning (RoBERTa-base)}{10}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Resultados do treino do modelo RoBERTa-base ajustado por \textit  {fine-tuning}.}}{10}{}\protected@file@percent }
+\newlabel{bert_train}{{5}{10}{}{figure.5}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {5}Discussão}{10}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Limitações e Ameaças à Validade}{10}{}\protected@file@percent }
-\bibcite{ref_article1}{1}
-\bibcite{ref_lncs1}{2}
-\bibcite{ref_book1}{3}
-\bibcite{ref_proc1}{4}
-\bibcite{ref_url1}{5}
-\bibcite{ds_openturingbench}{6}
-\bibcite{ds_dahoas}{7}
-\bibcite{ds_artem9k}{8}
-\bibcite{ds_anthropic}{9}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusão e Trabalho Futuro}{11}{}\protected@file@percent }
-\gdef \@abspage@last{11}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}Hierarquia de Desempenho: Vetorial vs. Contextual}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Ganho do Mecanismo de Atenção em Relação a Representações Vetoriais}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Análise Comparativa dos Modelos Vetoriais: NumPy DNN vs. PyTorch DNN}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4}Implicações para o Trade-off Computacional e de Performance}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.5}Análise por Classe e Robustez}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Limitações e Ameaças à Validade}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Validade Interna:}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Validade Externa:}{12}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Ameaças Específicas:}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Conclusão e Trabalho Futuro}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Síntese e Implicações Metodológicas}{13}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Contribuições para DetecçãoTextual e Processamento de Linguagem Natural}{13}{}\protected@file@percent }
+\bibcite{ref_numpy}{1}
+\bibcite{ref_pytorch}{2}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Trabalho Futuro}{14}{}\protected@file@percent }
+\bibcite{ref_roberta}{3}
+\bibcite{ds_openturingbench}{4}
+\bibcite{ds_dahoas}{5}
+\bibcite{ds_artem9k}{6}
+\bibcite{ds_anthropic}{7}
+\gdef \@abspage@last{15}
