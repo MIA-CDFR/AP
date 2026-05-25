@@ -1,11 +1,11 @@
 # Fdb version 4
-["xdvipdfmx"] 1779493095.10911 "relatorio_AP.xdv" "relatorio_AP.pdf" "relatorio_AP" 1779493099.85867 0
-  "relatorio_AP.xdv" 1779493095.05699 26380 24e5a1e5a57e3b55464a71bf7791461e "xelatex"
+["xdvipdfmx"] 1779745499.8076 "relatorio_AP.xdv" "relatorio_AP.pdf" "relatorio_AP" 1779745501.49885 0
+  "relatorio_AP.xdv" 1779745499.78959 26352 7dff394fba224e902ce45cefb37035a0 "xelatex"
   (generated)
   "relatorio_AP.pdf"
   (rewritten before read)
-["xelatex"] 1779493094.3234 "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/_trabalho_2/Relatório/relatorio_AP.tex" "relatorio_AP.xdv" "relatorio_AP" 1779493099.85746 0
-  "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/_trabalho_2/Relatório/relatorio_AP.tex" 1779493093.5516 20913 97dc39f8340135714fab9c396e040c4b ""
+["xelatex"] 1779745499.59423 "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/_trabalho_2/Relatório/relatorio_AP.tex" "relatorio_AP.xdv" "relatorio_AP" 1779745501.49844 0
+  "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/_trabalho_2/Relatório/relatorio_AP.tex" 1779745499.51552 20891 80c1ee21dc9c501e5d792791b519fc8b ""
   "/usr/local/texlive/2026/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/local/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex9.tfm" 1246382020 996 a18840b13b499c08ac2de96a99eda4bc ""
@@ -66,8 +66,8 @@
   "images/stricture-correct-grad-cam.png" 1779491811.66994 249579 658399e446fba640537158c31001f850 ""
   "images/stricture-wrong-grad-cam.png" 1779491853.60544 231674 c09f712b356a4bdaf815ded32cbe5f28 ""
   "llncs.cls" 1779489937.06898 43402 5fb5a2dc40571aa40f3d199c00cbb986 ""
-  "relatorio_AP.aux" 1779493095.05583 7442 3b3de101784e588e463582d7499fd399 "xelatex"
-  "relatorio_AP.tex" 1779493093.5516 20913 97dc39f8340135714fab9c396e040c4b ""
+  "relatorio_AP.aux" 1779745499.78878 7442 3b3de101784e588e463582d7499fd399 "xelatex"
+  "relatorio_AP.tex" 1779745499.51552 20891 80c1ee21dc9c501e5d792791b519fc8b ""
   (generated)
   "relatorio_AP.aux"
   "relatorio_AP.log"

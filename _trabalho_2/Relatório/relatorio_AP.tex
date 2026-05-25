@@ -146,7 +146,7 @@ fine-tuning parcial~\cite{tan2019}.
 Foram avaliadas sete versões, de v0 a v101. O salto principal ocorreu entre v3
 e v99 após introdução explícita de técnicas para classes minoritárias
 (Focal Loss + CE ponderada, Mixup, TTA e threshold tuning), elevando o F1 macro
-de 0.545 (v0) para 0.647 (v99). A melhor configuração foi a v100/v101 com
+de 0.545 (v0) para 0.647 (v99). A melhor configuração foi a v100 com
 F1 macro 0.7076 e accuracy 0.7266.
 
 \subsection{ResNet50}
@@ -452,7 +452,7 @@ continuação.
 \hline
 Pos. & Arquitetura & Melhor versão & F1 Macro & Accuracy \\
 \hline
-1 & DenseNet121 & v100/v101 & \textbf{0.7076} & \textbf{0.7266} \\
+1 & DenseNet121 & v100 & \textbf{0.7076} & \textbf{0.7266} \\
 2 & ResNet50 & v2 & \textbf{0.6647} & \textbf{0.7041} \\
 3 & EfficientNet-B7 & RR12 & \(\sim\)0.556 & \(\sim\)0.633 \\
 4 & MobileNetV2 & v4 & \(\sim\)0.556 & \(\sim\)0.620 \\
@@ -466,7 +466,7 @@ determinante no desempenho final. A DenseNet121 combinou de forma mais eficaz
 Focal Loss, class weighting, Mixup e TTA, alcançando F1 macro = 0.7076
 (+16.3\,pp face ao baseline interno, v0). O gap de 3.0\,pp face à baseline
 publicada~\cite{martins2025} (F1\,=\,0.738) indica que superar esse valor
-requereria dados sintéticos adicionais para Biliary Leaks ou arquiteturas de
+requereria dados adicionais para Biliary Leaks ou arquiteturas de
 atenção espacial (e.g.\ Vision Transformers), não exploradas neste trabalho.
 
 \subsection{Trabalho Futuro}
