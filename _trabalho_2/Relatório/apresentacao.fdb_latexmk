@@ -1,11 +1,11 @@
 # Fdb version 4
-["xdvipdfmx"] 1779746217.09538 "apresentacao.xdv" "apresentacao.pdf" "apresentacao" 1779746218.94319 0
-  "apresentacao.xdv" 1779746217.03597 129616 b1fef20e074c14ea568301b4c4f489df "xelatex"
+["xdvipdfmx"] 1779747298.20729 "apresentacao.xdv" "apresentacao.pdf" "apresentacao" 1779747299.52905 0
+  "apresentacao.xdv" 1779747298.168 130316 24597dd5734783ce2f53c5a5099369c6 "xelatex"
   (generated)
   "apresentacao.pdf"
   (rewritten before read)
-["xelatex"] 1779746215.66032 "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/_trabalho_2/Relatório/apresentacao.tex" "apresentacao.xdv" "apresentacao" 1779746218.94095 0
-  "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/_trabalho_2/Relatório/apresentacao.tex" 1779746215.85657 16766 94658ef0a9a017054073d1c382c79f58 ""
+["xelatex"] 1779747297.38583 "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/_trabalho_2/Relatório/apresentacao.tex" "apresentacao.xdv" "apresentacao" 1779747299.52691 0
+  "/Users/diego/Workspace/Simb/mia/2-semestre/trabalhos/AP/_trabalho_2/Relatório/apresentacao.tex" 1779747297.30601 16875 dfa100499fa3e8b361dc0a8d7e32c6ee ""
   "/usr/local/texlive/2026/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2026/texmf-dist/fonts/tfm/adobe/zapfding/pzdr.tfm" 1136768653 1528 f853c4d1b4e0550255e02831fdc8496f ""
   "/usr/local/texlive/2026/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
@@ -205,10 +205,10 @@
   "/usr/local/texlive/2026/texmf-dist/web2c/texmf.cnf" 1770478701 43630 e9fa012910491fe5ae08a72c3c2997a7 ""
   "/usr/local/texlive/2026/texmf-var/web2c/xetex/xelatex.fmt" 1774041148 5948559 1db49bf15858a732af7d952f30185331 ""
   "/usr/local/texlive/2026/texmf.cnf" 1772409725 577 648cd9f92f9c0eac486f4c71c85cfbbe ""
-  "apresentacao.aux" 1779746217.03504 2201 9e6a03092682feb77b816180713e46bc "xelatex"
-  "apresentacao.nav" 1779746217.03591 1202 a971439ba5eedf62b158aa4c3f07763d "xelatex"
-  "apresentacao.out" 1779746216.46864 0 d41d8cd98f00b204e9800998ecf8427e "xelatex"
-  "apresentacao.tex" 1779746215.85657 16766 94658ef0a9a017054073d1c382c79f58 ""
+  "apresentacao.aux" 1779747298.16681 2201 9e6a03092682feb77b816180713e46bc "xelatex"
+  "apresentacao.nav" 1779747298.16792 1202 a971439ba5eedf62b158aa4c3f07763d "xelatex"
+  "apresentacao.out" 1779747297.83369 0 d41d8cd98f00b204e9800998ecf8427e "xelatex"
+  "apresentacao.tex" 1779747297.30601 16875 dfa100499fa3e8b361dc0a8d7e32c6ee ""
   "images/biliaryleaks-correct-grad-cam.png" 1779491975.72324 261905 21d914024d5aeda50152efb958021198 ""
   "images/biliaryleaks-wrong-grad-cam.png" 1779491956.03143 252560 a5b00eee46f1e64738cf1400238491b9 ""
   "images/lithiasis-correct-grad-cam.png" 1779491927.96608 262066 b7b0f5207f760a4d99d5b1dff3fbb93d ""
