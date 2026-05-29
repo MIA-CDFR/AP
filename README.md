@@ -1,29 +1,44 @@
-# AP - Text Classification (MIA/AP)
+# AP — Aprendizagem Profunda (MIA, Grupo 8)
 
-Projeto de Aprendizagem Profunda (Universidade do Minho, Grupo 8) para classificacao de texto com multiplas abordagens:
+Universidade do Minho — Unidade Curricular de Aprendizagem Profunda.  
+Trabalhos desenvolvidos ao longo dos dois módulos da UC, Grupo 8.
 
-- NumPy DNN
-- PyTorch DNN
-- Transformer custom
-- BERT/RoBERTa fine-tuning
-
-## Team
+## Equipa
 
 | Aluno | Nome |
-|----------|------------|
-| PG11605  | Carlos da Mota Bergueira |
-| PG59999  | Diego Jefferson Mendes Silva |
-| PG42201  | Filipa Araujo Pereira |
-| PG7942   | Rui Manuel Martins Marques Rodrigues |
+|---|---|
+| PG11605 | Carlos da Mota Bergueira |
+| PG59999 | Diego Jefferson Mendes Silva |
+| PG42201 | Filipa Araújo Pereira |
+| PG7942  | Rui Manuel Martins Marques Rodrigues |
 
-## Setup
+---
 
-Prerequisites:
+## Módulo 1 — Classificação de Texto (`modulo-1/`)
 
-- Python 3.12+
-- pip
+Classificação multiclasse de notícias (dataset AG News) com quatro abordagens
+progressivas: de uma DNN em NumPy puro até fine-tuning de BERT/RoBERTa.
 
-Install:
+### Estrutura
+
+```
+modulo-1/
+├── src/
+│   ├── models/          # 4 implementações (NumPy DNN, PyTorch DNN, Transformer, BERT)
+│   ├── prepare/         # utilitários de montagem e pré-processamento do dataset
+│   ├── utils/           # helpers partilhados (treino, métricas, device)
+│   ├── data/            # CSVs locais (ag_news, subm1/2/3, exemplos anotados)
+│   ├── eval_*.py        # scripts de avaliação nos conjuntos rotulados
+│   └── analise_dataset.ipynb
+├── models/              # artefactos treinados (.pt, .pkl.gz) + resultados
+├── docs/article/        # relatório LaTeX + imagens
+└── Relatorio/           # versão Word do relatório
+```
+
+Os artefactos de submissão (previsões CSV + notebooks) encontram-se na raiz do
+repositório em `Subm1/`, `Subm2/` e `Subm3/`.
+
+### Instalação
 
 ```bash
 python -m venv .venv
@@ -31,88 +46,29 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-## Quick Overview
+### Treino dos modelos
 
-### Root files
-
-- `pyproject.toml`: project metadata and dependencies.
-- `requirements.txt`: pinned dependency export.
-- `README.md`: this guide.
-
-### Main folders (excluding folders starting with `_`)
-
-- `src/`: core codebase for dataset preparation, model training, and evaluation scripts.
-- `src/models/`: the 4 model implementations and notebooks used during experiments.
-- `src/prepare/`: dataset assembly utilities (`get_datasets`) and preprocessing pipeline.
-- `src/utils/`: shared helpers for training, dataset processing, metrics, and device/model utilities.
-- `src/data/`: local CSV datasets (`ag_news`, `subm1`, `subm2`, `subm3`, revealed labels, examples).
-- `models/`: trained model artifacts (`bert.pt`, `pytorch-dnn.pt`, `transformer.pt`, and NumPy model files).
-	- `models/results/`: evaluation outputs and transformer training checkpoints.
-- `docs/article/`: report assets (LaTeX source and images).
-- `Subm1/`, `Subm2/`, `Subm3/`: project submission deliverables (CSV predictions + notebooks) for each of the three rounds.
-
-## Training The Four Models
-
-Important: run training commands from `src/`, because model save paths are defined relative to that working directory.
+Executar a partir de `modulo-1/src/`:
 
 ```bash
-cd src
+cd modulo-1/src
 ```
-
-### 1) NumPy DNN (`models/numpy-dnn.pkl.gz`)
 
 ```bash
-python -c "from models.dnn.train import TrainNumpy; h = TrainNumpy.train(); print('epochs:', len(h['loss']))"
+# NumPy DNN
+python -c "from models.dnn.train import TrainNumpy; TrainNumpy.train()"
+
+# PyTorch DNN
+python -c "from models.pytorch.train import PyTorchTrainer; PyTorchTrainer.train()"
+
+# Transformer custom
+python -c "from models.transformer.train import TransformerTrainer; TransformerTrainer.train()"
+
+# BERT/RoBERTa fine-tuning
+python -c "from models.bert.train import BertTrainer; BertTrainer.train()"
 ```
 
-What it does briefly:
-
-- builds word TF-IDF (+ optional char/features)
-- trains a feedforward DNN implemented in NumPy
-- applies early stopping
-- saves to `../models/numpy-dnn.pkl.gz`
-
-### 2) PyTorch DNN (`models/pytorch-dnn.pt`)
-
-```bash
-python -c "from models.pytorch.train import PyTorchTrainer; h = PyTorchTrainer.train(); print('epochs:', len(h['train_loss']))"
-```
-
-What it does briefly:
-
-- builds word + char TF-IDF features
-- trains a PyTorch classifier with Adam and early stopping
-- saves to `../models/pytorch-dnn.pt`
-
-### 3) Transformer custom (`models/transformer.pt`)
-
-```bash
-python -c "from models.transformer.train import TransformerTrainer; h = TransformerTrainer.train(); print('epochs:', len(h['epoch']))"
-```
-
-What it does briefly:
-
-- tokenizes text with Hugging Face tokenizer
-- trains the custom transformer classifier with `Trainer`
-- saves checkpoint info/state dict to `../models/transformer.pt`
-
-### 4) BERT/RoBERTa fine-tuning (`models/bert.pt`)
-
-```bash
-python -c "from models.bert.train import BertTrainer; h = BertTrainer.train(); print('epochs:', len(h['epoch']))"
-```
-
-What it does briefly:
-
-- loads `roberta-base`
-- fine-tunes for multiclass classification via Hugging Face `Trainer`
-- saves to `../models/bert.pt`
-
-## Quick Intro: How To Use Trained Models
-
-### Evaluate all 4 models on known labeled sets
-
-Run from `src/`:
+### Avaliação
 
 ```bash
 python eval_dataset_exemplo_models.py
@@ -120,30 +76,64 @@ python eval_subm1_models.py
 python eval_subm2_models.py
 ```
 
-Outputs are written under `../models/results/`.
+Os resultados são escritos em `modulo-1/models/results/`.
 
-### Predict from Python
+---
 
-Example for BERT:
+## Módulo 2 — Classificação de Imagens ERCP (`modulo-2/`)
 
-```python
-from models.bert.model import BertModel
+Classificação multiclasse de imagens endoscópicas ERCP (dataset MIQR-CC, 4
+classes: Biliary Leaks, Lithiasis, Normal, Stricture) com quatro arquiteturas
+CNN pré-treinadas. Melhor resultado: **DenseNet121 — F1 macro = 0.7076**.
 
-model = BertModel.load("../models/bert.pt")
-preds = model.predict(["Example text to classify", "Another sentence"])
-print(preds)
+### Estrutura
+
+```
+modulo-2/
+├── notebooks/
+│   ├── DENSENET.ipynb       # notebook final DenseNet121
+│   ├── RESNET.ipynb         # notebook final ResNet50
+│   ├── MOBILENET.ipynb      # notebook final MobileNetV2
+│   ├── EFICIENTNET.ipynb    # notebook final EfficientNet-B7
+│   └── old-versions/        # histórico de versões intermédias (v1–v7 por arq.)
+├── docs/
+│   ├── relatorio/           # relatório técnico final (LaTeX LLNCS + PDF)
+│   └── apresentacao/        # apresentação Beamer 16:9 (LaTeX + PDF)
+└── requirements.txt
 ```
 
-The same usage pattern exists for:
+### Notebooks por arquitectura
 
-- `models.dnn.model.NumpyModel`
-- `models.pytorch.model.PyTorchModel`
-- `models.transformer.model.TransformModel`
+| Notebook | Arquitectura | Melhor F1 macro |
+|---|---|---|
+| `DENSENET.ipynb` | DenseNet121 | **0.7076** |
+| `RESNET.ipynb` | ResNet50 | 0.6647 |
+| `EFICIENTNET.ipynb` | EfficientNet-B7 | 0.5557 |
+| `MOBILENET.ipynb` | MobileNetV2 | 0.5558 |
 
-## Notes About Submissions
+Versões intermédias (histórico experimental completo) disponíveis em
+`modulo-2/notebooks/old-versions/`.
 
-- `Subm1/`: artifacts for submission round 1.
-- `Subm2/`: artifacts for submission round 2.
-- `Subm3/`: artifacts for submission round 3.
+### Instalação
 
-Each folder contains at least one notebook (`.ipynb`) and exported prediction file(s) (`.csv`) used in delivery.
+O módulo 2 usa [`uv`](https://docs.astral.sh/uv/) para gestão de dependências.
+
+```bash
+# Instalar uv (se necessário)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Criar ambiente e instalar dependências (com hash verification)
+uv sync
+
+# Alternativa via pip
+pip install -r modulo-2/requirements.txt
+```
+
+> Requer Python ≥ 3.10. Em macOS usa MPS (Apple Silicon); em Linux usa CUDA 13.
+
+### Documentação
+
+| Ficheiro | Descrição |
+|---|---|
+| `modulo-2/docs/relatorio/relatorio_AP.tex` | Relatório técnico (LLNCS/Springer) |
+| `modulo-2/docs/apresentacao/apresentacao.tex` | Apresentação Beamer (10 min, 11 slides) |
